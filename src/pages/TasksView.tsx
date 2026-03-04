@@ -207,7 +207,7 @@ function DraggableTaskRow({
 // ─── TasksView ────────────────────────────────────────────────────────────────
 
 export function TasksView() {
-  const { project, tasks, members, addTask, updateTask, deleteTask, moveTask, setTaskDates } = useProjectStore()
+  const { project, tasks, members, addTask, updateTask, deleteTask, moveTask, setTaskDates, addTaskDependency } = useProjectStore()
   const isPM    = useSessionStore((s) => s.isPM())
   const can     = useSessionStore((s) => s.can)
   const canEdit     = isPM || can('canEditTasks')
@@ -471,6 +471,7 @@ export function TasksView() {
           onClose={() => setSelectedId(null)}
           updateTask={updateTask}
           setTaskDates={setTaskDates}
+          addTaskDependency={addTaskDependency}
           currencyLabel={project?.currency ?? 'EUR'}
         />
       )}
@@ -495,7 +496,7 @@ function workingDaysBetween(startStr: string, endStr: string): number {
 // ─── TaskPanel ────────────────────────────────────────────────────────────────
 
 function TaskPanel({
-  task, tasks, members, canEdit, canProgress, onClose, updateTask, setTaskDates, currencyLabel,
+  task, tasks, members, canEdit, canProgress, onClose, updateTask, setTaskDates, addTaskDependency, currencyLabel,
 }: {
   task: Task
   tasks: Task[]
@@ -505,6 +506,7 @@ function TaskPanel({
   onClose: () => void
   updateTask: (id: string, data: Partial<Task>) => void
   setTaskDates: (id: string, startDate: string | null, endDate: string | null) => void
+  addTaskDependency: (taskId: string, dep: Task['dependencies'][number]) => void
   currencyLabel: string
 }) {
   const [localTitle,      setLocalTitle]      = useState(task.title)
@@ -586,7 +588,7 @@ function TaskPanel({
       setDepError('Ta zależność tworzyłaby cykl'); return
     }
     const lag = parseInt(newDepLag) || 0
-    update({ dependencies: [...task.dependencies, { taskId: newDepId, type: newDepType, lagDays: lag }] })
+    addTaskDependency(task.id, { taskId: newDepId, type: newDepType, lagDays: lag })
     setNewDepId(''); setNewDepLag('0'); setDepError(null)
   }
 

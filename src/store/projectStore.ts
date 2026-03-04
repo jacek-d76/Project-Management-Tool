@@ -26,6 +26,7 @@ interface ProjectState {
   deleteTask: (id: string) => void
   moveTask: (taskId: string, newParentId: string | null, newPosition: number) => void
   setTaskDates: (id: string, startDate: string | null, endDate: string | null) => void
+  addTaskDependency: (taskId: string, dep: Task['dependencies'][number]) => void
 
   // Milestone'y (stub - rozbudowane w Etapie 3)
   addMilestone: (milestone: Omit<Milestone, 'id'>) => void
@@ -106,6 +107,23 @@ export const useProjectStore = create<ProjectState>()(
           const schedUpdates = runScheduler(updated, id)
           return {
             tasks: updated.map((t) => {
+              const u = schedUpdates.get(t.id)
+              return u ? { ...t, ...u } : t
+            }),
+          }
+        }),
+
+      addTaskDependency: (taskId, dep) =>
+        set((state) => {
+          // Add dependency atomically, then run scheduler from the predecessor
+          const withDep = state.tasks.map((t) =>
+            t.id === taskId ? { ...t, dependencies: [...t.dependencies, dep] } : t
+          )
+          const pred = withDep.find((t) => t.id === dep.taskId)
+          if (!pred?.startDate || !pred?.endDate) return { tasks: withDep }
+          const schedUpdates = runScheduler(withDep, dep.taskId)
+          return {
+            tasks: withDep.map((t) => {
               const u = schedUpdates.get(t.id)
               return u ? { ...t, ...u } : t
             }),
