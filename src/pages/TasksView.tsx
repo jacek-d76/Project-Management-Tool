@@ -19,18 +19,18 @@ import type { Task, TaskStatus, TaskPriority, TeamMember, DependencyType } from 
 // ─── Konfiguracja ─────────────────────────────────────────────────────────────
 
 const STATUS_OPTS: { value: TaskStatus; label: string; cls: string }[] = [
-  { value: 'TODO',        label: 'Do zrobienia',  cls: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-  { value: 'IN_PROGRESS', label: 'W trakcie',     cls: 'bg-blue-100 text-blue-700' },
-  { value: 'IN_REVIEW',   label: 'Do przeglądu',  cls: 'bg-amber-100 text-amber-700' },
-  { value: 'DONE',        label: 'Gotowe',        cls: 'bg-green-100 text-green-700' },
-  { value: 'BLOCKED',     label: 'Zablokowane',   cls: 'bg-red-100 text-red-700' },
+  { value: 'TODO',        label: 'To do',       cls: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  { value: 'IN_PROGRESS', label: 'In progress', cls: 'bg-blue-100 text-blue-700' },
+  { value: 'IN_REVIEW',   label: 'In review',   cls: 'bg-amber-100 text-amber-700' },
+  { value: 'DONE',        label: 'Done',        cls: 'bg-green-100 text-green-700' },
+  { value: 'BLOCKED',     label: 'Blocked',     cls: 'bg-red-100 text-red-700' },
 ]
 
 const PRIORITY_OPTS: { value: TaskPriority; label: string; cls: string }[] = [
-  { value: 'LOW',      label: 'Niski',     cls: 'bg-gray-100 text-gray-500' },
-  { value: 'MEDIUM',   label: 'Średni',    cls: 'bg-blue-100 text-blue-600' },
-  { value: 'HIGH',     label: 'Wysoki',    cls: 'bg-orange-100 text-orange-600' },
-  { value: 'CRITICAL', label: 'Krytyczny', cls: 'bg-red-100 text-red-700' },
+  { value: 'LOW',      label: 'Low',      cls: 'bg-gray-100 text-gray-500' },
+  { value: 'MEDIUM',   label: 'Medium',   cls: 'bg-blue-100 text-blue-600' },
+  { value: 'HIGH',     label: 'High',     cls: 'bg-orange-100 text-orange-600' },
+  { value: 'CRITICAL', label: 'Critical', cls: 'bg-red-100 text-red-700' },
 ]
 
 const statusLabel   = (s: TaskStatus)   => STATUS_OPTS.find((o) => o.value === s)?.label ?? s
@@ -59,7 +59,7 @@ function InlineAdd({
       <Input
         ref={inputRef}
         className="h-7 text-sm"
-        placeholder="Nazwa zadania... (Enter aby dodać)"
+        placeholder="Task name... (Enter to add)"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -68,7 +68,7 @@ function InlineAdd({
         }}
         onBlur={() => setTimeout(() => onCancel(), 150)}
       />
-      <Button size="sm" className="h-7 px-2 shrink-0" onMouseDown={() => onConfirm(parentId)}>Dodaj</Button>
+      <Button size="sm" className="h-7 px-2 shrink-0" onMouseDown={() => onConfirm(parentId)}>Add</Button>
       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onMouseDown={() => onCancel()}>
         <X className="h-3 w-3" />
       </Button>
@@ -175,7 +175,7 @@ function DraggableTaskRow({
           {canEdit && (
             <button
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-              title="Dodaj podzadanie"
+              title="Add subtask"
               onClick={(e) => { e.stopPropagation(); onStartAdd() }}
             >
               <Plus className="h-3 w-3" />
@@ -184,7 +184,7 @@ function DraggableTaskRow({
           {canEdit && (
             <button
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-destructive/60 hover:text-destructive"
-              title="Usuń"
+              title="Delete"
               onClick={(e) => { e.stopPropagation(); onDelete() }}
             >
               <Trash2 className="h-3 w-3" />
@@ -276,7 +276,7 @@ export function TasksView() {
 
   const handleDelete = (task: Task) => {
     const kids = getChildren(task.id).length
-    if (!confirm(`Usunąć "${task.title}"${kids > 0 ? ` i ${kids} podzada${kids === 1 ? 'nie' : 'nia/ń'}` : ''}?`)) return
+    if (!confirm(`Delete "${task.title}"${kids > 0 ? ` and ${kids} subtask${kids === 1 ? '' : 's'}` : ''}?`)) return
     deleteTask(task.id)
     if (selectedId === task.id) setSelectedId(null)
   }
@@ -383,14 +383,14 @@ export function TasksView() {
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Wszystkie statusy</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               {STATUS_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterPriority} onValueChange={setFilterPriority}>
             <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Wszystkie priorytety</SelectItem>
+              <SelectItem value="all">All priorities</SelectItem>
               {PRIORITY_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -398,7 +398,7 @@ export function TasksView() {
             <Select value={filterMember} onValueChange={setFilterMember}>
               <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Wszyscy</SelectItem>
+                <SelectItem value="all">Everyone</SelectItem>
                 {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -407,7 +407,7 @@ export function TasksView() {
           {canEdit && (
             <Button size="sm" className="h-8" onClick={() => startAdd('root')}>
               <Plus className="h-4 w-4 mr-1" />
-              Dodaj zadanie
+              Add task
             </Button>
           )}
         </div>
@@ -425,9 +425,9 @@ export function TasksView() {
               <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-muted-foreground">
                 <ListTodo className="h-12 w-12 opacity-30" />
                 <div>
-                  <p className="font-medium">Brak zadań</p>
+                  <p className="font-medium">No tasks</p>
                   <p className="text-sm">
-                    {canEdit ? 'Kliknij "+ Dodaj zadanie" aby rozpocząć.' : 'Brak zadań w tym projekcie.'}
+                    {canEdit ? 'Click "+ Add task" to get started.' : 'No tasks in this project.'}
                   </p>
                 </div>
               </div>
@@ -587,7 +587,7 @@ function TaskPanel({
   const addDep = () => {
     if (!newDepId) return
     if (wouldCreateCycle(tasks, task.id, newDepId)) {
-      setDepError('Ta zależność tworzyłaby cykl'); return
+      setDepError('This dependency would create a cycle'); return
     }
     const lag = parseInt(newDepLag) || 0
     addTaskDependency(task.id, { taskId: newDepId, type: newDepType, lagDays: lag })
@@ -598,7 +598,7 @@ function TaskPanel({
     <div className="w-72 border-l flex flex-col overflow-hidden bg-background shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Szczegóły zadania</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Task details</span>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -608,7 +608,7 @@ function TaskPanel({
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {/* Title */}
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Nazwa</Label>
+          <Label className="text-xs text-muted-foreground">Name</Label>
           <input
             className="w-full text-sm font-medium bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none py-1 transition-colors disabled:opacity-60"
             value={localTitle}
@@ -633,7 +633,7 @@ function TaskPanel({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Priorytet</Label>
+            <Label className="text-xs text-muted-foreground">Priority</Label>
             <Select value={task.priority} disabled={!canEdit} onValueChange={(v) => update({ priority: v as TaskPriority })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -646,7 +646,7 @@ function TaskPanel({
         {/* Progress */}
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">
-            Postęp: <span className="font-medium text-foreground">{task.progress}%</span>
+            Progress: <span className="font-medium text-foreground">{task.progress}%</span>
           </Label>
           <input
             type="range" min={0} max={100} step={5}
@@ -663,7 +663,7 @@ function TaskPanel({
         {/* Dates */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Start</Label>
+            <Label className="text-xs text-muted-foreground">Start date</Label>
             <Input type="date" className="h-8 text-xs" value={task.startDate ?? ''} disabled={!canEdit}
               onChange={(e) => setTaskDates(task.id, e.target.value || null, task.endDate)} />
           </div>
@@ -680,7 +680,7 @@ function TaskPanel({
           const calDays = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000) + 1
           return (
             <p className="text-[10px] text-muted-foreground -mt-1">
-              {calDays} dni kalendarzowych · <span className="font-medium text-foreground">{wdays} dni roboczych</span>
+              {calDays} calendar days · <span className="font-medium text-foreground">{wdays} working days</span>
             </p>
           )
         })()}
@@ -688,12 +688,12 @@ function TaskPanel({
         {/* Pricing mode */}
         {isPM && (
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Wycena</Label>
+            <Label className="text-xs text-muted-foreground">Pricing</Label>
             <div className="flex gap-4">
               <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                 <input type="radio" checked={task.pricingMode === 'hourly'} disabled={!canEdit}
                   onChange={() => update({ pricingMode: 'hourly', fixedPrice: null })} />
-                Godzinowo
+                Hourly
               </label>
               <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                 <input type="radio" checked={task.pricingMode === 'fixed'} disabled={!canEdit}
@@ -702,7 +702,7 @@ function TaskPanel({
               </label>
             </div>
             {task.pricingMode === 'fixed' && (
-              <Input type="number" min={0} step={1} placeholder={`Kwota (${currencyLabel})`}
+              <Input type="number" min={0} step={1} placeholder={`Amount (${currencyLabel})`}
                 className="h-8 text-xs" value={localFixedPrice} disabled={!canEdit}
                 onChange={(e) => setLocalFixedPrice(e.target.value)}
                 onBlur={() => update({ fixedPrice: parseFloat(localFixedPrice) || null })} />
@@ -713,7 +713,7 @@ function TaskPanel({
         {/* Assigned members */}
         {members.length > 0 && (
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Przypisane osoby</Label>
+            <Label className="text-xs text-muted-foreground">Assigned people</Label>
 
             {isPM ? (
               /* PM: full view – checkboxes, hours, rates, costs */
@@ -737,7 +737,7 @@ function TaskPanel({
                       <div className="px-2 pb-2 space-y-1.5">
                         {/* Estimated hours row */}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Planowane:</span>
+                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Planned:</span>
                           <Input
                             type="number" min={0} step={0.5}
                             className="h-6 text-xs w-16 px-1.5"
@@ -755,7 +755,7 @@ function TaskPanel({
                                   ({wdays}d&nbsp;×&nbsp;{hpd % 1 === 0 ? hpd : hpd.toFixed(1)}h)
                                 </span>
                                 <button
-                                  title={`Auto-oblicz: ${wdays} dni rob. × ${hpd.toFixed(1)} h/dzień = ${Math.round(wdays * hpd * 2) / 2}h`}
+                                  title={`Auto-calculate: ${wdays} working days × ${hpd.toFixed(1)} h/day = ${Math.round(wdays * hpd * 2) / 2}h`}
                                   className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
                                   onClick={() => autoCalcHours(m.id)}
                                 >
@@ -772,7 +772,7 @@ function TaskPanel({
                         </div>
                         {/* Actual hours row */}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Wykonano:</span>
+                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Actual:</span>
                           <Input
                             type="number" min={0} step={0.5}
                             className="h-6 text-xs w-16 px-1.5"
@@ -797,7 +797,7 @@ function TaskPanel({
             ) : (
               /* Team member: names only */
               task.assignments.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">Brak przypisanych osób</p>
+                <p className="text-xs text-muted-foreground italic">No one assigned</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {task.assignments.map((a) => {
@@ -818,7 +818,7 @@ function TaskPanel({
         {/* Dependencies */}
         {canEdit && (
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Zależności (poprzednicy)</Label>
+            <Label className="text-xs text-muted-foreground">Dependencies (predecessors)</Label>
 
             {/* Existing deps list */}
             {task.dependencies.length > 0 && (
@@ -857,7 +857,7 @@ function TaskPanel({
                 <div className="space-y-1.5">
                   <Select value={newDepId} onValueChange={(v) => { setNewDepId(v); setDepError(null) }}>
                     <SelectTrigger className="h-7 text-xs">
-                      <SelectValue placeholder="Dodaj poprzednika..." />
+                      <SelectValue placeholder="Add predecessor..." />
                     </SelectTrigger>
                     <SelectContent>
                       {available.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
@@ -875,12 +875,12 @@ function TaskPanel({
                       <Input
                         type="number" step={1}
                         className="h-7 w-14 text-xs"
-                        title="Opóźnienie w dniach roboczych (ujemne = wyprzedzenie)"
+                        title="Lag in working days (negative = lead)"
                         value={newDepLag}
                         onChange={(e) => setNewDepLag(e.target.value)}
                       />
                       <span className="text-[10px] text-muted-foreground">d</span>
-                      <Button size="sm" className="h-7 px-2 text-xs ml-auto" onClick={addDep}>Dodaj</Button>
+                      <Button size="sm" className="h-7 px-2 text-xs ml-auto" onClick={addDep}>Add</Button>
                     </div>
                   )}
                   {depError && <p className="text-[10px] text-destructive">{depError}</p>}
@@ -892,10 +892,10 @@ function TaskPanel({
 
         {/* Description */}
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Opis</Label>
+          <Label className="text-xs text-muted-foreground">Description</Label>
           <textarea
             className="w-full text-xs rounded-md border border-input bg-background px-3 py-2 min-h-[80px] resize-y focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-            placeholder="Dodaj opis zadania..."
+            placeholder="Add task description..."
             value={localDesc}
             disabled={!canEdit}
             onChange={(e) => setLocalDesc(e.target.value)}

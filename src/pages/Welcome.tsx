@@ -22,7 +22,6 @@ export function Welcome() {
   const { project, setProject, importJSON } = useProjectStore()
   const isPM = useSessionStore((s) => s.isPM())
 
-  // Wszystkie hooki MUSZĄ być przed jakimkolwiek warunkowym return
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -32,12 +31,10 @@ export function Welcome() {
     exchangeRate: 4.25,
   })
 
-  // Jeśli projekt już istnieje - przekieruj (komponent Navigate zamiast navigate())
   if (project) {
     return <Navigate to="/tasks" replace />
   }
 
-  // Team member bez projektu = komunikat
   if (!isPM) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
@@ -46,10 +43,10 @@ export function Welcome() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
               <Lock className="h-6 w-6 text-muted-foreground" />
             </div>
-            <h2 className="text-lg font-semibold">Brak aktywnego projektu</h2>
+            <h2 className="text-lg font-semibold">No active project</h2>
             <p className="text-sm text-muted-foreground">
-              Project Manager musi najpierw zainicjować projekt.
-              Skontaktuj się z PM i poproś o udostępnienie pliku projektu.
+              The Project Manager must initialize the project first.
+              Contact your PM and ask for the project file.
             </p>
           </CardContent>
         </Card>
@@ -71,7 +68,7 @@ export function Welcome() {
     reader.onload = (ev) => {
       const ok = importJSON(ev.target?.result as string)
       if (ok) navigate('/tasks')
-      else alert('Błąd wczytywania pliku. Sprawdź format JSON.')
+      else alert('Failed to load file. Check the JSON format.')
     }
     reader.readAsText(file)
   }
@@ -85,25 +82,25 @@ export function Welcome() {
             <FolderKanban className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-2xl font-bold">Project Manager</h1>
-          <p className="text-muted-foreground mt-1">Utwórz nowy projekt lub wczytaj istniejący</p>
+          <p className="text-muted-foreground mt-1">Create a new project or load an existing one</p>
         </div>
 
-        {/* Formularz tworzenia projektu */}
+        {/* New project form */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Plus className="h-5 w-5" />
-              Nowy projekt
+              New project
             </CardTitle>
-            <CardDescription>Wypełnij podstawowe informacje o projekcie</CardDescription>
+            <CardDescription>Fill in basic project information</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nazwa projektu *</Label>
+                <Label htmlFor="name">Project name *</Label>
                 <Input
                   id="name"
-                  placeholder="np. Budowa strony internetowej"
+                  placeholder="e.g. Website development"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
@@ -111,10 +108,10 @@ export function Welcome() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Opis (opcjonalnie)</Label>
+                <Label htmlFor="description">Description (optional)</Label>
                 <Input
                   id="description"
-                  placeholder="Krótki opis projektu..."
+                  placeholder="Short project description..."
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                 />
@@ -122,7 +119,7 @@ export function Welcome() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Data startu *</Label>
+                  <Label htmlFor="startDate">Start date *</Label>
                   <Input
                     id="startDate"
                     type="date"
@@ -145,7 +142,7 @@ export function Welcome() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Waluta bazowa</Label>
+                  <Label>Base currency</Label>
                   <Select
                     value={form.currency}
                     onValueChange={(v) => setForm({ ...form, currency: v as Currency })}
@@ -160,7 +157,7 @@ export function Welcome() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="rate">Kurs: 1 EUR =</Label>
+                  <Label htmlFor="rate">Rate: 1 EUR =</Label>
                   <div className="relative">
                     <Input
                       id="rate"
@@ -181,19 +178,19 @@ export function Welcome() {
               </div>
 
               <Button type="submit" className="w-full">
-                Utwórz projekt
+                Create project
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Import */}
+        {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-muted/40 px-2 text-muted-foreground">lub</span>
+            <span className="bg-muted/40 px-2 text-muted-foreground">or</span>
           </div>
         </div>
 
@@ -202,9 +199,9 @@ export function Welcome() {
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 text-center transition-colors hover:border-primary/50 hover:bg-accent/50">
               <FolderKanban className="h-8 w-8 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">Wczytaj projekt z pliku JSON</p>
+                <p className="text-sm font-medium">Load project from JSON file</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Kliknij aby wybrać plik eksportu
+                  Click to select export file
                 </p>
               </div>
               <input

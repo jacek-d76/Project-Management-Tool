@@ -43,7 +43,7 @@ export function Settings() {
 
   const handleSave = () => {
     updateProject(form)
-    alert('Ustawienia zapisane.')
+    alert('Settings saved.')
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,13 +53,13 @@ export function Settings() {
     reader.onload = (ev) => {
       const ok = importJSON(ev.target?.result as string)
       if (ok) navigate('/tasks')
-      else alert('Błąd wczytywania pliku.')
+      else alert('Failed to load file.')
     }
     reader.readAsText(file)
   }
 
   const handleClear = () => {
-    if (confirm('Czy na pewno chcesz usunąć projekt i wszystkie dane? Tej operacji nie można cofnąć.')) {
+    if (confirm('Are you sure you want to delete the project and all data? This action cannot be undone.')) {
       clearProject()
       navigate('/')
     }
@@ -69,24 +69,24 @@ export function Settings() {
     <div className="p-6 max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold flex items-center gap-2">
         <Settings2 className="h-6 w-6" />
-        Ustawienia projektu
+        Project settings
       </h1>
 
-      {/* Dane projektu */}
+      {/* Project info */}
       <Card>
         <CardHeader>
-          <CardTitle>Informacje o projekcie</CardTitle>
+          <CardTitle>Project information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Nazwa projektu</Label>
+            <Label>Project name</Label>
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <Label>Opis</Label>
+            <Label>Description</Label>
             <Input
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -94,7 +94,7 @@ export function Settings() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Data startu</Label>
+              <Label>Start date</Label>
               <Input
                 type="date"
                 value={form.startDate}
@@ -112,7 +112,7 @@ export function Settings() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Waluta bazowa</Label>
+              <Label>Base currency</Label>
               <Select
                 value={form.currency}
                 onValueChange={(v) => setForm({ ...form, currency: v as Currency })}
@@ -127,7 +127,7 @@ export function Settings() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kurs: 1 EUR =</Label>
+              <Label>Rate: 1 EUR =</Label>
               <div className="relative">
                 <Input
                   type="number"
@@ -145,26 +145,26 @@ export function Settings() {
               </div>
             </div>
           </div>
-          <Button onClick={handleSave}>Zapisz ustawienia</Button>
+          <Button onClick={handleSave}>Save settings</Button>
         </CardContent>
       </Card>
 
-      {/* Dane / Backup */}
+      {/* Data / Backup */}
       <Card>
         <CardHeader>
-          <CardTitle>Dane projektu</CardTitle>
-          <CardDescription>Eksportuj lub importuj pełne dane projektu</CardDescription>
+          <CardTitle>Project data</CardTitle>
+          <CardDescription>Export or import full project data</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-3 flex-wrap">
           <Button variant="outline" onClick={exportJSON}>
             <Download className="h-4 w-4 mr-2" />
-            Eksportuj JSON
+            Export JSON
           </Button>
           <label>
             <Button variant="outline" asChild>
               <span>
                 <Upload className="h-4 w-4 mr-2" />
-                Importuj JSON
+                Import JSON
               </span>
             </Button>
             <input type="file" accept=".json" className="sr-only" onChange={handleImport} />
@@ -172,16 +172,16 @@ export function Settings() {
         </CardContent>
       </Card>
 
-      {/* Strefa niebezpieczna */}
+      {/* Danger zone */}
       <Card className="border-destructive/50">
         <CardHeader>
-          <CardTitle className="text-destructive">Strefa niebezpieczna</CardTitle>
-          <CardDescription>Operacje nieodwracalne</CardDescription>
+          <CardTitle className="text-destructive">Danger zone</CardTitle>
+          <CardDescription>Irreversible operations</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="destructive" onClick={handleClear}>
             <Trash2 className="h-4 w-4 mr-2" />
-            Usuń projekt i wszystkie dane
+            Delete project and all data
           </Button>
         </CardContent>
       </Card>

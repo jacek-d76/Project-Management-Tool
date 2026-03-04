@@ -12,12 +12,12 @@ import type { TeamMember, UserPermissions } from '@/types'
 import { DEFAULT_PERMISSIONS } from '@/types'
 
 const PERMISSIONS_CONFIG: { key: keyof UserPermissions; label: string; description: string }[] = [
-  { key: 'canEditTasks',      label: 'Edycja zadań',      description: 'Dodawanie, zmiana statusu, dat, opisu zadań' },
-  { key: 'canUpdateProgress', label: '% postępu',          description: 'Aktualizacja suwaka postępu zadania' },
-  { key: 'canViewCosts',      label: 'Koszty',             description: 'Dostęp do zakładki Koszty' },
-  { key: 'canEditMilestones', label: 'Milestone\'y',       description: 'Dodawanie i edycja kamieni milowych' },
-  { key: 'canAddEvidence',    label: 'Dowody',             description: 'Delivery evidence do milestone\'ów' },
-  { key: 'canManageTeam',     label: 'Zarządzanie',        description: 'Edycja danych członków zespołu' },
+  { key: 'canEditTasks',      label: 'Edit tasks',      description: 'Add, change status, dates, description of tasks' },
+  { key: 'canUpdateProgress', label: 'Progress %',      description: 'Update task progress slider' },
+  { key: 'canViewCosts',      label: 'Costs',           description: 'Access to Costs tab' },
+  { key: 'canEditMilestones', label: 'Milestones',      description: 'Add and edit milestones' },
+  { key: 'canAddEvidence',    label: 'Evidence',        description: 'Delivery evidence for milestones' },
+  { key: 'canManageTeam',     label: 'Manage team',     description: 'Edit team member data' },
 ]
 
 const emptyForm = {
@@ -34,10 +34,8 @@ const emptyForm = {
 export function UsersView() {
   const { members, addMember, updateMember, deleteMember, project } = useProjectStore()
 
-  // Lokalny stan uprawnień — śledzi niezapisane zmiany per użytkownik
   const [dirtyPerms, setDirtyPerms] = useState<Record<string, UserPermissions>>({})
 
-  // Dialog dodaj/edytuj (dane podstawowe)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ ...emptyForm, permissions: { ...DEFAULT_PERMISSIONS } })
@@ -45,7 +43,6 @@ export function UsersView() {
 
   const currencyLabel = project?.currency ?? 'EUR'
 
-  // Pobierz aktualne uprawnienia (z dirty state lub ze store)
   const getPerms = (m: TeamMember): UserPermissions => dirtyPerms[m.id] ?? m.permissions
 
   const togglePerm = (memberId: string, key: keyof UserPermissions) => {
@@ -75,7 +72,6 @@ export function UsersView() {
     })
   }
 
-  // Dialog
   const openAdd = () => {
     setEditId(null)
     setForm({ ...emptyForm, permissions: { ...DEFAULT_PERMISSIONS } })
@@ -105,7 +101,7 @@ export function UsersView() {
       (m) => m.username.toLowerCase() === form.username.toLowerCase() && m.id !== editId
     )
     if (duplicate) {
-      setUsernameError('Ta nazwa użytkownika jest już zajęta.')
+      setUsernameError('This username is already taken.')
       return
     }
     if (editId) {
@@ -122,19 +118,19 @@ export function UsersView() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <UserCog className="h-6 w-6" />
-            Zespół i użytkownicy
+            Team &amp; users
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {members.length} {members.length === 1 ? 'osoba' : 'osób'} w projekcie
+            {members.length} {members.length === 1 ? 'member' : 'members'} in project
           </p>
         </div>
         <Button onClick={openAdd}>
           <Plus className="h-4 w-4 mr-2" />
-          Dodaj użytkownika
+          Add user
         </Button>
       </div>
 
-      {/* Konto PM */}
+      {/* PM account */}
       <Card className="mb-4 border-primary/30 bg-primary/5">
         <CardContent className="py-3">
           <div className="flex items-center gap-3">
@@ -142,7 +138,7 @@ export function UsersView() {
             <div>
               <div className="font-medium">Project Manager</div>
               <div className="text-xs text-muted-foreground">
-                login: <span className="font-mono">pm</span> · pełny dostęp · hasło w konfiguracji serwera
+                login: <span className="font-mono">pm</span> · full access · password in server config
               </div>
             </div>
           </div>
@@ -153,8 +149,8 @@ export function UsersView() {
         <Card>
           <CardContent className="py-12 text-center">
             <UserCog className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Brak użytkowników.</p>
-            <p className="text-sm text-muted-foreground">Kliknij "Dodaj użytkownika" aby utworzyć pierwsze konto.</p>
+            <p className="text-muted-foreground">No users.</p>
+            <p className="text-sm text-muted-foreground">Click "Add user" to create the first account.</p>
           </CardContent>
         </Card>
       ) : (
@@ -165,7 +161,7 @@ export function UsersView() {
             return (
               <Card key={m.id} className={!m.isActive ? 'opacity-50' : isDirty ? 'border-primary/50' : ''}>
                 <CardContent className="py-3 space-y-3">
-                  {/* Wiersz 1: dane użytkownika */}
+                  {/* Row 1: user data */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="font-medium">{m.name}</div>
@@ -173,8 +169,8 @@ export function UsersView() {
                         {m.projectRole && <span>{m.projectRole} · </span>}
                         <span className="font-mono">{m.username}</span>
                         <span className="mx-1">·</span>
-                        <span>{m.weeklyHours}h/tydz. · {m.hourlyRate} {currencyLabel}/h</span>
-                        {!m.isActive && <span className="ml-1 text-destructive">(nieaktywny)</span>}
+                        <span>{m.weeklyHours}h/wk · {m.hourlyRate} {currencyLabel}/h</span>
+                        {!m.isActive && <span className="ml-1 text-destructive">(inactive)</span>}
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -184,14 +180,14 @@ export function UsersView() {
                       <Button
                         variant="ghost" size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => { if (confirm(`Usunąć ${m.name}?`)) deleteMember(m.id) }}
+                        onClick={() => { if (confirm(`Delete ${m.name}?`)) deleteMember(m.id) }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
 
-                  {/* Wiersz 2: checkboxy uprawnień */}
+                  {/* Row 2: permission checkboxes */}
                   <div className="flex items-center gap-1 flex-wrap">
                     {PERMISSIONS_CONFIG.map(({ key, label, description }) => (
                       <label
@@ -217,7 +213,7 @@ export function UsersView() {
                           className="h-7 px-2 text-xs text-muted-foreground"
                           onClick={() => discardPerms(m.id)}
                         >
-                          Anuluj
+                          Cancel
                         </Button>
                         <Button
                           size="sm"
@@ -225,7 +221,7 @@ export function UsersView() {
                           onClick={() => savePerms(m.id)}
                         >
                           <Save className="h-3 w-3" />
-                          Zapisz
+                          Save
                         </Button>
                       </div>
                     )}
@@ -237,17 +233,17 @@ export function UsersView() {
         </div>
       )}
 
-      {/* Dialog dodaj/edytuj (dane podstawowe bez uprawnień) */}
+      {/* Add/edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Edytuj użytkownika' : 'Nowy użytkownik'}</DialogTitle>
+            <DialogTitle>{editId ? 'Edit user' : 'New user'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Imię i nazwisko *</Label>
+              <Label>Full name *</Label>
               <Input
-                placeholder="np. Anna Kowalska"
+                placeholder="e.g. John Smith"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 autoFocus
@@ -255,9 +251,9 @@ export function UsersView() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Login *</Label>
+                <Label>Username *</Label>
                 <Input
-                  placeholder="np. anna.k"
+                  placeholder="e.g. john.s"
                   value={form.username}
                   onChange={(e) => { setForm({ ...form, username: e.target.value }); setUsernameError('') }}
                   className={usernameError ? 'border-destructive' : ''}
@@ -265,24 +261,24 @@ export function UsersView() {
                 {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Hasło *</Label>
+                <Label>Password *</Label>
                 <Input
                   type="password"
-                  placeholder="Ustaw hasło..."
+                  placeholder="Set password..."
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Rola w projekcie</Label>
+                <Label>Project role</Label>
                 <Input
-                  placeholder="np. Developer, Designer..."
+                  placeholder="e.g. Developer, Designer..."
                   value={form.projectRole}
                   onChange={(e) => setForm({ ...form, projectRole: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Dostępność (h/tydzień)</Label>
+                <Label>Availability (h/week)</Label>
                 <Input
                   type="number" min="1" max="80"
                   value={form.weeklyHours}
@@ -290,7 +286,7 @@ export function UsersView() {
                 />
               </div>
               <div className="space-y-2 col-span-2">
-                <Label>Stawka ({currencyLabel}/h)</Label>
+                <Label>Rate ({currencyLabel}/h)</Label>
                 <Input
                   type="number" min="0" step="0.5"
                   value={form.hourlyRate}
@@ -306,16 +302,16 @@ export function UsersView() {
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                 className="h-4 w-4"
               />
-              <Label htmlFor="isActive">Konto aktywne</Label>
+              <Label htmlFor="isActive">Active account</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Anuluj</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button
               onClick={handleSave}
               disabled={!form.name.trim() || !form.username.trim() || !form.password.trim()}
             >
-              {editId ? 'Zapisz zmiany' : 'Utwórz konto'}
+              {editId ? 'Save changes' : 'Create account'}
             </Button>
           </DialogFooter>
         </DialogContent>

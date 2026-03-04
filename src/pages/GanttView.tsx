@@ -12,11 +12,11 @@ const HDR_H = 44   // date header height (2 rows)
 const MS_H  = 22   // milestone strip height at top of SVG
 
 const ZOOM_OPTS = {
-  week:     { dayW: 40,  label: 'Tydzień'  },
-  month:    { dayW: 14,  label: 'Miesiąc'  },
-  quarter:  { dayW:  5,  label: 'Kwartał'  },
-  halfyear: { dayW:  3,  label: 'Pół roku' },
-  year:     { dayW: 1.5, label: 'Rok'      },
+  week:     { dayW: 40,  label: 'Week'      },
+  month:    { dayW: 14,  label: 'Month'     },
+  quarter:  { dayW:  5,  label: 'Quarter'   },
+  halfyear: { dayW:  3,  label: 'Half year' },
+  year:     { dayW: 1.5, label: 'Year'      },
 } as const
 type ZoomKey = keyof typeof ZOOM_OPTS
 
@@ -24,8 +24,8 @@ const STATUS_CLR: Record<string, string> = {
   TODO: '#94a3b8', IN_PROGRESS: '#3b82f6',
   IN_REVIEW: '#f59e0b', DONE: '#22c55e', BLOCKED: '#ef4444',
 }
-const MONTHS = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru']
-const WDAYS  = ['N','P','W','Ś','C','P','S']
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const WDAYS  = ['Su','Mo','Tu','We','Th','Fr','Sa']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -280,7 +280,7 @@ export function GanttView() {
         ))}
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground">
-          {tasks.filter((t) => t.startDate && t.endDate).length}/{tasks.length} zadań z datami
+          {tasks.filter((t) => t.startDate && t.endDate).length}/{tasks.length} tasks with dates
         </span>
       </div>
 
@@ -288,7 +288,7 @@ export function GanttView() {
       <div className="flex shrink-0 border-b" style={{ height: HDR_H }}>
         {/* Left corner */}
         <div className="shrink-0 border-r bg-muted/30 flex items-end px-3 pb-1" style={{ width: leftW }}>
-          <span className="text-[11px] font-semibold text-muted-foreground">Zadanie</span>
+          <span className="text-[11px] font-semibold text-muted-foreground">Task</span>
         </div>
         {/* Divider placeholder */}
         <div className="w-1 shrink-0 bg-border" />
@@ -322,7 +322,7 @@ export function GanttView() {
           {/* Milestone label row */}
           <div style={{ height: MS_H }}
             className="border-b border-amber-200/50 bg-amber-50/20 flex items-center px-3">
-            <span className="text-[9px] font-medium text-amber-700/60 uppercase tracking-wide">Milestone'y</span>
+            <span className="text-[9px] font-medium text-amber-700/60 uppercase tracking-wide">Milestones</span>
           </div>
 
           {rows.map(({ task, depth }) => {
@@ -357,7 +357,7 @@ export function GanttView() {
         <div
           onMouseDown={onDividerDown}
           className="w-1 shrink-0 cursor-col-resize bg-border hover:bg-primary/40 transition-colors"
-          title="Przeciągnij aby zmienić szerokość"
+          title="Drag to resize"
         />
 
         {/* Right: timeline SVG */}

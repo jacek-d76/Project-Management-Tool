@@ -16,11 +16,11 @@ import { useSessionStore } from '@/store/sessionStore'
 import { Button } from '@/components/ui/button'
 
 const navItems = [
-  { to: '/tasks', icon: LayoutList, label: 'Lista zadań' },
+  { to: '/tasks', icon: LayoutList, label: 'Task list' },
   { to: '/gantt', icon: GanttChartSquare, label: 'Gantt' },
-  { to: '/milestones', icon: Flag, label: 'Milestone\'y' },
-  { to: '/workload', icon: BarChart3, label: 'Obciążenie' },
-  { to: '/costs', icon: DollarSign, label: 'Koszty', pmOnly: true },
+  { to: '/milestones', icon: Flag, label: 'Milestones' },
+  { to: '/workload', icon: BarChart3, label: 'Workload' },
+  { to: '/costs', icon: DollarSign, label: 'Costs', pmOnly: true },
 ]
 
 export function Sidebar() {
@@ -34,9 +34,9 @@ export function Sidebar() {
       <div className="flex items-center gap-2 border-b px-4 py-4">
         <FolderKanban className="h-5 w-5 text-primary shrink-0" />
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">Projekt</p>
+          <p className="text-xs text-muted-foreground">Project</p>
           <p className="truncate text-sm font-semibold">
-            {project?.name ?? 'Brak projektu'}
+            {project?.name ?? 'No project'}
           </p>
         </div>
       </div>
@@ -81,7 +81,7 @@ export function Sidebar() {
             }
           >
             <UserCog className="h-4 w-4 shrink-0" />
-            Użytkownicy
+            Users
           </NavLink>
         )}
         {isPM() && (
@@ -97,7 +97,7 @@ export function Sidebar() {
             }
           >
             <Settings className="h-4 w-4 shrink-0" />
-            Ustawienia
+            Settings
           </NavLink>
         )}
         {currentUser && (
@@ -113,7 +113,7 @@ export function Sidebar() {
           onClick={() => { logout(); navigate('/') }}
         >
           <LogOut className="h-4 w-4" />
-          Wyloguj
+          Log out
         </Button>
       </div>
     </aside>

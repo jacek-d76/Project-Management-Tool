@@ -34,9 +34,9 @@ function calcStatus(milestone: Milestone, tasks: ReturnType<typeof useProjectSto
 }
 
 const STATUS_CFG = {
-  OK:       { icon: CheckCircle2, cls: 'text-green-600',  bg: 'bg-green-50  border-green-200',  label: 'OK'         },
-  AT_RISK:  { icon: AlertTriangle, cls: 'text-amber-600', bg: 'bg-amber-50  border-amber-200',  label: 'ZAGROŻONY'  },
-  BREACHED: { icon: AlertCircle,   cls: 'text-red-600',   bg: 'bg-red-50    border-red-200',    label: 'PRZEKROCZONY' },
+  OK:       { icon: CheckCircle2, cls: 'text-green-600',  bg: 'bg-green-50  border-green-200',  label: 'OK'       },
+  AT_RISK:  { icon: AlertTriangle, cls: 'text-amber-600', bg: 'bg-amber-50  border-amber-200',  label: 'AT RISK'  },
+  BREACHED: { icon: AlertCircle,   cls: 'text-red-600',   bg: 'bg-red-50    border-red-200',    label: 'BREACHED' },
 }
 
 // ─── Empty forms ──────────────────────────────────────────────────────────────
@@ -166,16 +166,16 @@ export function MilestonesView() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Flag className="h-6 w-6" />
-            Milestone'y
+            Milestones
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {milestones.length} {milestones.length === 1 ? 'kamień milowy' : 'kamieni milowych'}
+            {milestones.length} {milestones.length === 1 ? 'milestone' : 'milestones'}
           </p>
         </div>
         {canEditMilestones && (
           <Button onClick={openAddMilestone}>
             <Plus className="h-4 w-4 mr-2" />
-            Dodaj milestone
+            Add milestone
           </Button>
         )}
       </div>
@@ -185,9 +185,9 @@ export function MilestonesView() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Flag className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Brak milestone'ów</p>
+            <p className="font-medium">No milestones</p>
             {canEditMilestones && (
-              <p className="text-sm mt-1">Kliknij "Dodaj milestone" aby utworzyć pierwszy kamień milowy.</p>
+              <p className="text-sm mt-1">Click "Add milestone" to create the first one.</p>
             )}
           </CardContent>
         </Card>
@@ -236,7 +236,7 @@ export function MilestonesView() {
                       <Button
                         variant="ghost" size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => { if (confirm(`Usunąć "${ms.name}"?`)) deleteMilestone(ms.id) }}
+                        onClick={() => { if (confirm(`Delete "${ms.name}"?`)) deleteMilestone(ms.id) }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -250,13 +250,13 @@ export function MilestonesView() {
                 {(linked.length > 0 || canEditMilestones) && (
                   <div>
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">Powiązane zadania</span>
+                      <span className="text-xs font-medium text-muted-foreground">Linked tasks</span>
                       {canEditMilestones && (
                         <button
                           className="text-xs text-primary hover:underline"
                           onClick={() => setLinkingId(isLinking ? null : ms.id)}
                         >
-                          {isLinking ? 'Gotowe' : 'Edytuj'}
+                          {isLinking ? 'Done' : 'Edit'}
                         </button>
                       )}
                     </div>
@@ -264,7 +264,7 @@ export function MilestonesView() {
                     {isLinking ? (
                       <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-auto bg-background">
                         {leafTasks.length === 0
-                          ? <p className="text-xs text-muted-foreground">Brak zadań w projekcie.</p>
+                          ? <p className="text-xs text-muted-foreground">No tasks in project.</p>
                           : leafTasks.map((t) => (
                             <label key={t.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5">
                               <input
@@ -291,19 +291,19 @@ export function MilestonesView() {
                 {/* Evidence */}
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">Dowody dostarczenia</span>
+                    <span className="text-xs font-medium text-muted-foreground">Delivery evidence</span>
                     {canAddEvidence && (
                       <button
                         className="text-xs text-primary hover:underline"
                         onClick={() => openAddEvidence(ms.id)}
                       >
-                        + Dodaj
+                        + Add
                       </button>
                     )}
                   </div>
 
                   {ms.evidence.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Brak dowodów.</p>
+                    <p className="text-xs text-muted-foreground">No evidence.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {ms.evidence.map((ev) => (
@@ -327,7 +327,7 @@ export function MilestonesView() {
                               <button
                                 className="text-left text-amber-700 hover:underline truncate block w-full"
                                 onClick={() => copyToClipboard(ev.link, ev.id)}
-                                title="Kliknij aby skopiować ścieżkę"
+                                title="Click to copy path"
                               >
                                 {ev.link}
                               </button>
@@ -340,13 +340,13 @@ export function MilestonesView() {
                           {/* Copy feedback */}
                           {copiedId === ev.id && (
                             <span className="text-green-600 flex items-center gap-0.5 shrink-0">
-                              <Check className="h-3 w-3" /> Skopiowano
+                              <Check className="h-3 w-3" /> Copied
                             </span>
                           )}
                           {/* Copy button for all */}
                           <button
                             className="opacity-0 group-hover:opacity-100 shrink-0"
-                            title="Kopiuj do schowka"
+                            title="Copy to clipboard"
                             onClick={() => copyToClipboard(ev.link, ev.id)}
                           >
                             <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
@@ -374,20 +374,20 @@ export function MilestonesView() {
       <Dialog open={mOpen} onOpenChange={setMOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{mEditId ? 'Edytuj milestone' : 'Nowy milestone'}</DialogTitle>
+            <DialogTitle>{mEditId ? 'Edit milestone' : 'New milestone'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Nazwa *</Label>
+              <Label>Name *</Label>
               <Input
-                placeholder="np. Odbiór fazy 1"
+                placeholder="e.g. Phase 1 delivery"
                 value={mForm.name}
                 onChange={(e) => setMForm({ ...mForm, name: e.target.value })}
                 autoFocus
               />
             </div>
             <div className="space-y-2">
-              <Label>Data *</Label>
+              <Label>Date *</Label>
               <Input
                 type="date"
                 value={mForm.date}
@@ -395,22 +395,22 @@ export function MilestonesView() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Notatki PM</Label>
+              <Label>PM notes</Label>
               <textarea
                 className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 min-h-[80px] resize-y focus:outline-none focus:ring-1 focus:ring-ring"
-                placeholder="Opis, warunki odbioru, uwagi..."
+                placeholder="Description, acceptance criteria, notes..."
                 value={mForm.description}
                 onChange={(e) => setMForm({ ...mForm, description: e.target.value })}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMOpen(false)}>Anuluj</Button>
+            <Button variant="outline" onClick={() => setMOpen(false)}>Cancel</Button>
             <Button
               onClick={saveMilestone}
               disabled={!mForm.name.trim() || !mForm.date}
             >
-              {mEditId ? 'Zapisz zmiany' : 'Utwórz'}
+              {mEditId ? 'Save changes' : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -420,11 +420,11 @@ export function MilestonesView() {
       <Dialog open={eOpen} onOpenChange={setEOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Dodaj dowód dostarczenia</DialogTitle>
+            <DialogTitle>Add delivery evidence</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Typ</Label>
+              <Label>Type</Label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
@@ -442,34 +442,34 @@ export function MilestonesView() {
                     onChange={() => setEForm({ ...eForm, type: 'network_path' })}
                   />
                   <FolderOpen className="h-4 w-4 text-amber-500" />
-                  Ścieżka sieciowa
+                  Network path
                 </label>
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{eForm.type === 'url' ? 'URL *' : 'Ścieżka UNC *'}</Label>
+              <Label>{eForm.type === 'url' ? 'URL *' : 'UNC path *'}</Label>
               <Input
-                placeholder={eForm.type === 'url' ? 'https://...' : '\\\\NAS\\folder\\plik'}
+                placeholder={eForm.type === 'url' ? 'https://...' : '\\\\NAS\\folder\\file'}
                 value={eForm.link}
                 onChange={(e) => setEForm({ ...eForm, link: e.target.value })}
                 autoFocus
               />
               {eForm.type === 'network_path' && (
-                <p className="text-xs text-muted-foreground">Kliknięcie skopiuje ścieżkę do schowka.</p>
+                <p className="text-xs text-muted-foreground">Clicking will copy the path to clipboard.</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Opis (opcjonalnie)</Label>
+              <Label>Description (optional)</Label>
               <Input
-                placeholder="np. Protokół odbioru, wersja 1.2"
+                placeholder="e.g. Delivery protocol, version 1.2"
                 value={eForm.description}
                 onChange={(e) => setEForm({ ...eForm, description: e.target.value })}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEOpen(false)}>Anuluj</Button>
-            <Button onClick={saveEvidence} disabled={!eForm.link.trim()}>Dodaj dowód</Button>
+            <Button variant="outline" onClick={() => setEOpen(false)}>Cancel</Button>
+            <Button onClick={saveEvidence} disabled={!eForm.link.trim()}>Add evidence</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

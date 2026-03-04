@@ -39,7 +39,7 @@ export function LoginScreen() {
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">Project Manager</CardTitle>
-            <CardDescription>Wybierz sposób logowania</CardDescription>
+            <CardDescription>Select login method</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
@@ -55,7 +55,7 @@ export function LoginScreen() {
               onClick={() => setMode('user')}
             >
               <User className="h-5 w-5" />
-              Użytkownik
+              Team Member
             </Button>
           </CardContent>
         </Card>
@@ -74,40 +74,40 @@ export function LoginScreen() {
             }
           </div>
           <CardTitle>
-            {mode === 'pm' ? 'Project Manager' : 'Logowanie użytkownika'}
+            {mode === 'pm' ? 'Project Manager' : 'Team member login'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'user' && (
               <div className="space-y-2">
-                <Label htmlFor="username">Login</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Wpisz login..."
+                  placeholder="Enter username..."
                   autoFocus
                   autoComplete="username"
                 />
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="password">Hasło</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Wpisz hasło..."
+                placeholder="Enter password..."
                 autoComplete="current-password"
                 autoFocus={mode === 'pm'}
                 className={error ? 'border-destructive' : ''}
               />
               {error && (
                 <p className="text-sm text-destructive">
-                  Nieprawidłowe dane logowania.
+                  Invalid credentials.
                 </p>
               )}
             </div>
@@ -116,15 +116,15 @@ export function LoginScreen() {
               className="w-full"
               disabled={mode === 'user' ? (!username.trim() || !password) : !password}
             >
-              Zaloguj się
+              Log in
             </Button>
             <Button type="button" variant="ghost" className="w-full" onClick={goBack}>
-              ← Wróć
+              ← Back
             </Button>
           </form>
           {mode === 'user' && (
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              Nie masz konta? Skontaktuj się z Project Managerem.
+              No account? Contact your Project Manager.
             </p>
           )}
         </CardContent>

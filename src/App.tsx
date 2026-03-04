@@ -23,7 +23,7 @@ function RequireProject({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-// Strony dostępne tylko dla PM - team member dostaje przekierowanie do /tasks
+// Pages available to PM only – team member is redirected to /tasks
 function RequirePM({ children }: { children: React.ReactNode }) {
   const isPM = useSessionStore((s) => s.isPM())
   if (!isPM) return <Navigate to="/tasks" replace />
@@ -35,10 +35,10 @@ export default function App() {
     <BrowserRouter basename="/Project-Management-Tool">
       <RequireAuth>
         <Routes>
-          {/* Ekran powitalny - tworzenie/import projektu (tylko PM) */}
+          {/* Welcome screen – create / import project (PM only) */}
           <Route path="/" element={<Welcome />} />
 
-          {/* Aplikacja - wymaga istniejącego projektu */}
+          {/* App – requires an existing project */}
           <Route element={<AppLayout />}>
             <Route
               path="/tasks"
@@ -69,27 +69,27 @@ export default function App() {
               element={
                 <RequireProject>
                   <PlaceholderPage
-                    title="Widok obciążenia"
-                    description="Heatmapa obciążenia pracy zostanie zbudowana w Etapie 5."
+                    title="Workload view"
+                    description="Workload heatmap will be built in Stage 5."
                   />
                 </RequireProject>
               }
             />
-            {/* Koszty - tylko PM */}
+            {/* Costs – PM only */}
             <Route
               path="/costs"
               element={
                 <RequireProject>
                   <RequirePM>
                     <PlaceholderPage
-                      title="Analiza kosztów"
-                      description="Widok kosztów i wycen zostanie zbudowany w Etapie 6."
+                      title="Cost analysis"
+                      description="Cost and pricing view will be built in Stage 6."
                     />
                   </RequirePM>
                 </RequireProject>
               }
             />
-            {/* Użytkownicy - tylko PM, nie wymaga projektu */}
+            {/* Users – PM only, no project required */}
             <Route
               path="/users"
               element={
@@ -98,7 +98,7 @@ export default function App() {
                 </RequirePM>
               }
             />
-            {/* Ustawienia - tylko PM */}
+            {/* Settings – PM only */}
             <Route
               path="/settings"
               element={
