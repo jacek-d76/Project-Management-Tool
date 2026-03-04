@@ -674,6 +674,17 @@ function TaskPanel({
           </div>
         </div>
 
+        {/* Working days info (PM only, when dates set) */}
+        {isPM && task.startDate && task.endDate && (() => {
+          const wdays = workingDaysBetween(task.startDate, task.endDate)
+          const calDays = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000) + 1
+          return (
+            <p className="text-[10px] text-muted-foreground -mt-1">
+              {calDays} dni kalendarzowych · <span className="font-medium text-foreground">{wdays} dni roboczych</span>
+            </p>
+          )
+        })()}
+
         {/* Pricing mode */}
         {isPM && (
           <div className="space-y-1.5">
