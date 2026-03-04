@@ -14,11 +14,12 @@ function fmt(eur: number, showPln: boolean, rate: number): string {
 // ─── Summary cards ────────────────────────────────────────────────────────────
 
 function StatCard({
-  label, value, sub, color,
+  label, value, sub, desc, color,
 }: {
   label: string
   value: string
   sub?: string
+  desc: string
   color?: string
 }) {
   return (
@@ -26,6 +27,7 @@ function StatCard({
       <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</span>
       <span className={`text-2xl font-bold tabular-nums ${color ?? ''}`}>{value}</span>
       {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+      <span className="text-[10px] text-muted-foreground/60 mt-1 leading-snug">{desc}</span>
     </div>
   )
 }
@@ -145,8 +147,10 @@ const TODAY = new Date().toISOString().slice(0, 10)
 
 export function CostsView() {
   const { project, tasks, members } = useProjectStore()
-  const [showPln, setShowPln] = useState(false)
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [showPln,       setShowPln]       = useState(false)
+  const [expanded,      setExpanded]      = useState<Set<string>>(new Set())
+  const [showPersons,   setShowPersons]   = useState(false)
+  const [showPhases,    setShowPhases]    = useState(false)
 
   if (!project) return null
 
@@ -200,31 +204,44 @@ export function CostsView() {
             label="Total budget"
             value={fmt(totals.budget, showPln, rate)}
             sub={cur}
+            desc="Sum of all estimated costs: hourly (est. hours × rate) + fixed-price tasks."
           />
           <StatCard
             label="Earned value"
             value={fmt(totals.earnedValue, showPln, rate)}
             sub={`${totals.evPct}% of budget · ${cur}`}
+            desc="Budget × progress %. Shows how much work has been completed in monetary terms."
             color="text-green-600 dark:text-green-400"
           />
           <StatCard
             label="Actual cost"
             value={totals.actualCost > 0 ? fmt(totals.actualCost, showPln, rate) : '—'}
             sub={totals.actualCost > 0 ? cur : 'No actual hours logged'}
+            desc="Real cost based on actual hours logged × hourly rate. If AC > EV, the project is over budget."
             color={totals.actualCost > totals.earnedValue ? 'text-red-600' : undefined}
           />
           <StatCard
             label="Remaining"
             value={fmt(totals.remaining, showPln, rate)}
             sub={`${100 - totals.evPct}% of budget · ${cur}`}
+            desc="Budget − Earned value. Estimated cost of work still to be done."
           />
         </div>
 
         {/* ── By person ── */}
         {persons.length > 0 && (
           <section>
-            <h2 className="text-sm font-semibold mb-3">By person</h2>
-            <div className="rounded-xl border overflow-hidden">
+            <button
+              className="flex items-center gap-2 w-full text-left mb-3 group"
+              onClick={() => setShowPersons((v) => !v)}
+            >
+              {showPersons
+                ? <ChevronDown  className="h-4 w-4 text-muted-foreground" />
+                : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">By person</h2>
+              <span className="text-xs text-muted-foreground">{persons.length} member{persons.length !== 1 ? 's' : ''}</span>
+            </button>
+            {showPersons && <div className="rounded-xl border overflow-hidden">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-muted/30 text-xs text-muted-foreground border-b">
@@ -280,62 +297,69 @@ export function CostsView() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
+            </div>}
           </section>
         )}
 
         {/* ── By phase ── */}
         {tree.length > 0 && (
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold">By phase / task</h2>
-              <span className="text-xs text-muted-foreground">
-                Click ▶ to expand subtasks
-              </span>
-            </div>
-            <div className="rounded-xl border overflow-hidden">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-muted/30 text-xs text-muted-foreground border-b">
-                    <th className="text-left px-3 py-2 font-medium">Task / Phase</th>
-                    <th className="text-center px-3 py-2 font-medium w-20">Mode</th>
-                    <th className="text-left px-3 py-2 font-medium w-44">Progress</th>
-                    <th className="text-right px-3 py-2 font-medium w-28">Budget</th>
-                    <th className="text-right px-3 py-2 font-medium w-28 text-green-700 dark:text-green-400">Earned</th>
-                    <th className="text-right px-3 py-2 font-medium w-28">Actual cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tree.map((node) => (
-                    <PhaseRow
-                      key={node.taskId}
-                      node={node}
-                      showPln={showPln}
-                      rate={rate}
-                      expanded={expanded}
-                      onToggle={toggleExpand}
-                    />
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-muted/20 border-t font-semibold text-sm">
-                    <td className="px-3 py-2" colSpan={3}>Total</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.budget, showPln, rate)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{fmt(totals.earnedValue, showPln, rate)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                      {totals.actualCost > 0 ? fmt(totals.actualCost, showPln, rate) : '—'}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {/* At-risk legend */}
-            {tree.some((t) => t.isAtRisk || t.children.some((c) => c.isAtRisk)) && (
-              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 text-orange-500" />
-                AT RISK — time elapsed &gt; 25% but progress &lt; 50% of elapsed time
-              </p>
+            <button
+              className="flex items-center gap-2 w-full text-left mb-3 group"
+              onClick={() => setShowPhases((v) => !v)}
+            >
+              {showPhases
+                ? <ChevronDown  className="h-4 w-4 text-muted-foreground" />
+                : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">By phase / task</h2>
+              <span className="text-xs text-muted-foreground">{tree.length} top-level task{tree.length !== 1 ? 's' : ''} · click ▶ in table to expand subtasks</span>
+            </button>
+            {showPhases && (
+              <>
+                <div className="rounded-xl border overflow-hidden">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-muted/30 text-xs text-muted-foreground border-b">
+                        <th className="text-left px-3 py-2 font-medium">Task / Phase</th>
+                        <th className="text-center px-3 py-2 font-medium w-20">Mode</th>
+                        <th className="text-left px-3 py-2 font-medium w-44">Progress</th>
+                        <th className="text-right px-3 py-2 font-medium w-28">Budget</th>
+                        <th className="text-right px-3 py-2 font-medium w-28 text-green-700 dark:text-green-400">Earned</th>
+                        <th className="text-right px-3 py-2 font-medium w-28">Actual cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tree.map((node) => (
+                        <PhaseRow
+                          key={node.taskId}
+                          node={node}
+                          showPln={showPln}
+                          rate={rate}
+                          expanded={expanded}
+                          onToggle={toggleExpand}
+                        />
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-muted/20 border-t font-semibold text-sm">
+                        <td className="px-3 py-2" colSpan={3}>Total</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.budget, showPln, rate)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{fmt(totals.earnedValue, showPln, rate)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {totals.actualCost > 0 ? fmt(totals.actualCost, showPln, rate) : '—'}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                {/* At-risk legend */}
+                {tree.some((t) => t.isAtRisk || t.children.some((c) => c.isAtRisk)) && (
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-orange-500" />
+                    AT RISK — time elapsed &gt; 25% but progress &lt; 50% of elapsed time
+                  </p>
+                )}
+              </>
             )}
           </section>
         )}
