@@ -466,6 +466,7 @@ export function TasksView() {
           task={selectedTask}
           tasks={tasks}
           members={members}
+          isPM={isPM}
           canEdit={canEdit}
           canProgress={canProgress}
           onClose={() => setSelectedId(null)}
@@ -496,11 +497,12 @@ function workingDaysBetween(startStr: string, endStr: string): number {
 // ─── TaskPanel ────────────────────────────────────────────────────────────────
 
 function TaskPanel({
-  task, tasks, members, canEdit, canProgress, onClose, updateTask, setTaskDates, addTaskDependency, currencyLabel,
+  task, tasks, members, isPM, canEdit, canProgress, onClose, updateTask, setTaskDates, addTaskDependency, currencyLabel,
 }: {
   task: Task
   tasks: Task[]
   members: TeamMember[]
+  isPM: boolean
   canEdit: boolean
   canProgress: boolean
   onClose: () => void
@@ -673,7 +675,7 @@ function TaskPanel({
         </div>
 
         {/* Pricing mode */}
-        {canEdit && (
+        {isPM && (
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Wycena</Label>
             <div className="flex gap-4">
@@ -697,83 +699,99 @@ function TaskPanel({
           </div>
         )}
 
-        {/* Assigned members with per-person hours */}
+        {/* Assigned members */}
         {members.length > 0 && (
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Przypisane osoby</Label>
-            {members.filter((m) => m.isActive).map((m) => {
-              const assignment = task.assignments.find((a) => a.personId === m.id)
-              const isAssigned = !!assignment
-              const hours = localHours[m.id]
-              return (
-                <div key={m.id} className={`rounded-md border ${isAssigned ? 'border-border bg-muted/20' : 'border-transparent'}`}>
-                  <label className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5">
-                    <input type="checkbox"
-                      checked={isAssigned}
-                      disabled={!canEdit}
-                      onChange={() => toggleMember(m.id)}
-                      className="h-3.5 w-3.5 shrink-0" />
-                    <span className="font-medium flex-1">{m.name}</span>
-                    {m.projectRole && <span className="text-muted-foreground text-[10px]">{m.projectRole}</span>}
-                    <span className="text-muted-foreground text-[10px] shrink-0">{m.hourlyRate} {currencyLabel}/h</span>
-                  </label>
 
-                  {isAssigned && hours && (
-                    <div className="px-2 pb-2 space-y-1.5">
-                      {/* Estimated hours row */}
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Planowane:</span>
-                        <Input
-                          type="number" min={0} step={0.5}
-                          className="h-6 text-xs w-16 px-1.5"
-                          value={hours.est}
-                          disabled={!canEdit}
-                          onChange={(e) => setLocalHours((p) => ({ ...p, [m.id]: { ...p[m.id], est: e.target.value } }))}
-                          onBlur={() => saveHours(m.id)}
-                        />
-                        <span className="text-[10px] text-muted-foreground">h</span>
-                        {/* Auto-calc from dates */}
-                        {canEdit && task.startDate && task.endDate && (
-                          <button
-                            title={`Oblicz z dat: ${workingDaysBetween(task.startDate, task.endDate)} dni rob. × ${(m.weeklyHours/5).toFixed(1)} h/dzień`}
-                            className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-                            onClick={() => autoCalcHours(m.id)}
-                          >
-                            <Calculator className="h-3 w-3" />
-                          </button>
-                        )}
-                        {/* Show estimated cost hint */}
-                        {assignment.estimatedHours > 0 && task.pricingMode === 'hourly' && (
-                          <span className="text-[10px] text-muted-foreground ml-auto">
-                            ≈ {(assignment.estimatedHours * m.hourlyRate).toLocaleString()} {currencyLabel}
-                          </span>
-                        )}
+            {isPM ? (
+              /* PM: full view – checkboxes, hours, rates, costs */
+              members.filter((m) => m.isActive).map((m) => {
+                const assignment = task.assignments.find((a) => a.personId === m.id)
+                const isAssigned = !!assignment
+                const hours = localHours[m.id]
+                return (
+                  <div key={m.id} className={`rounded-md border ${isAssigned ? 'border-border bg-muted/20' : 'border-transparent'}`}>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5">
+                      <input type="checkbox"
+                        checked={isAssigned}
+                        onChange={() => toggleMember(m.id)}
+                        className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-medium flex-1">{m.name}</span>
+                      {m.projectRole && <span className="text-muted-foreground text-[10px]">{m.projectRole}</span>}
+                      <span className="text-muted-foreground text-[10px] shrink-0">{m.hourlyRate} {currencyLabel}/h</span>
+                    </label>
+
+                    {isAssigned && hours && (
+                      <div className="px-2 pb-2 space-y-1.5">
+                        {/* Estimated hours row */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Planowane:</span>
+                          <Input
+                            type="number" min={0} step={0.5}
+                            className="h-6 text-xs w-16 px-1.5"
+                            value={hours.est}
+                            onChange={(e) => setLocalHours((p) => ({ ...p, [m.id]: { ...p[m.id], est: e.target.value } }))}
+                            onBlur={() => saveHours(m.id)}
+                          />
+                          <span className="text-[10px] text-muted-foreground">h</span>
+                          {task.startDate && task.endDate && (
+                            <button
+                              title={`Oblicz z dat: ${workingDaysBetween(task.startDate, task.endDate)} dni rob. × ${(m.weeklyHours/5).toFixed(1)} h/dzień`}
+                              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+                              onClick={() => autoCalcHours(m.id)}
+                            >
+                              <Calculator className="h-3 w-3" />
+                            </button>
+                          )}
+                          {assignment.estimatedHours > 0 && task.pricingMode === 'hourly' && (
+                            <span className="text-[10px] text-muted-foreground ml-auto">
+                              ≈ {(assignment.estimatedHours * m.hourlyRate).toLocaleString()} {currencyLabel}
+                            </span>
+                          )}
+                        </div>
+                        {/* Actual hours row */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Wykonano:</span>
+                          <Input
+                            type="number" min={0} step={0.5}
+                            className="h-6 text-xs w-16 px-1.5"
+                            value={hours.actual}
+                            placeholder="—"
+                            disabled={!canProgress}
+                            onChange={(e) => setLocalHours((p) => ({ ...p, [m.id]: { ...p[m.id], actual: e.target.value } }))}
+                            onBlur={() => saveHours(m.id)}
+                          />
+                          <span className="text-[10px] text-muted-foreground">h</span>
+                          {assignment.actualHours != null && assignment.actualHours > 0 && task.pricingMode === 'hourly' && (
+                            <span className="text-[10px] text-muted-foreground ml-auto">
+                              = {(assignment.actualHours * m.hourlyRate).toLocaleString()} {currencyLabel}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {/* Actual hours row */}
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Wykonano:</span>
-                        <Input
-                          type="number" min={0} step={0.5}
-                          className="h-6 text-xs w-16 px-1.5"
-                          value={hours.actual}
-                          placeholder="—"
-                          disabled={!canProgress}
-                          onChange={(e) => setLocalHours((p) => ({ ...p, [m.id]: { ...p[m.id], actual: e.target.value } }))}
-                          onBlur={() => saveHours(m.id)}
-                        />
-                        <span className="text-[10px] text-muted-foreground">h</span>
-                        {/* Actual cost */}
-                        {assignment.actualHours != null && assignment.actualHours > 0 && task.pricingMode === 'hourly' && (
-                          <span className="text-[10px] text-muted-foreground ml-auto">
-                            = {(assignment.actualHours * m.hourlyRate).toLocaleString()} {currencyLabel}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                )
+              })
+            ) : (
+              /* Team member: names only */
+              task.assignments.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Brak przypisanych osób</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {task.assignments.map((a) => {
+                    const m = members.find((x) => x.id === a.personId)
+                    if (!m) return null
+                    return (
+                      <span key={a.personId} className="text-xs bg-muted rounded-full px-2.5 py-0.5 font-medium">
+                        {m.name}
+                      </span>
+                    )
+                  })}
                 </div>
               )
-            })}
+            )}
           </div>
         )}
 
