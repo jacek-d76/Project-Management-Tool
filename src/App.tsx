@@ -7,6 +7,7 @@ import { Settings } from '@/pages/Settings'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
 import { TasksView } from '@/pages/TasksView'
 import { MilestonesView } from '@/pages/MilestonesView'
+import { GanttView } from '@/pages/GanttView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -59,10 +60,7 @@ export default function App() {
               path="/gantt"
               element={
                 <RequireProject>
-                  <PlaceholderPage
-                    title="Wykres Gantta"
-                    description="Interaktywny wykres Gantta zostanie zbudowany w Etapie 4."
-                  />
+                  <GanttView />
                 </RequireProject>
               }
             />
