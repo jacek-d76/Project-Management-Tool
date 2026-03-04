@@ -4,8 +4,8 @@ import type { UserRole } from '@/types'
 
 // Hasła zakodowane w buildzie - zmień przed deployem!
 // W Etapie 8 (serwer) weryfikacja przeniesie się na backend.
-const PM_PASSWORD = import.meta.env.VITE_PM_PASSWORD ?? 'pm2026'
-const TEAM_PASSWORD = import.meta.env.VITE_TEAM_PASSWORD ?? 'team2026'
+const PM_PASSWORD = import.meta.env.VITE_PM_PASSWORD || 'pm2026'
+const TEAM_PASSWORD = import.meta.env.VITE_TEAM_PASSWORD || 'team2026'
 
 interface SessionState {
   role: UserRole
