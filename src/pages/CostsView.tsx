@@ -11,14 +11,6 @@ function fmt(eur: number, showPln: boolean, rate: number): string {
   return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-function CurrencyLabel({ showPln, rate }: { showPln: boolean; rate: number }) {
-  return (
-    <span className="text-xs text-muted-foreground ml-1">
-      {showPln ? 'PLN' : 'EUR'}
-    </span>
-  )
-}
-
 // ─── Summary cards ────────────────────────────────────────────────────────────
 
 function StatCard({
