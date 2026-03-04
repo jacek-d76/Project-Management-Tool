@@ -78,8 +78,7 @@ export function GanttView() {
   const totalDays = diff(gsDate, geDate) + 1
   const totalW    = totalDays * dayW
 
-  const xOf    = (s: string) => diff(gsDate, parse(s)) * dayW
-  const dateAt = (x: number) => iso(addDays(gsDate, Math.round(x / dayW)))
+  const xOf = (s: string) => diff(gsDate, parse(s)) * dayW
 
   // ─── Flatten visible tree ────────────────────────────────────────────────────
 
