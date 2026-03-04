@@ -152,6 +152,16 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'project-manager-storage',
+      version: 2,
+      migrate: (persistedState, version) => {
+        const s = persistedState as Record<string, unknown>
+        // v1 → v2: persons (Person[]) renamed to members (TeamMember[])
+        if (version < 2 && Array.isArray(s.persons)) {
+          s.members = s.members ?? []
+          delete s.persons
+        }
+        return s
+      },
     }
   )
 )

@@ -19,8 +19,14 @@ import type { Currency } from '@/types'
 
 export function Welcome() {
   const navigate = useNavigate()
-  const { setProject, importJSON } = useProjectStore()
+  const { project, setProject, importJSON } = useProjectStore()
   const isPM = useSessionStore((s) => s.isPM())
+
+  // Jeśli projekt już istnieje - przekieruj od razu
+  if (project) {
+    navigate('/tasks', { replace: true })
+    return null
+  }
 
   // Team member nie może tworzyć projektu - brak projektu = komunikat
   if (!isPM) {
