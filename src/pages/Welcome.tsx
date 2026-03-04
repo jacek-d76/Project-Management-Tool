@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { FolderKanban, Plus, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,13 +22,22 @@ export function Welcome() {
   const { project, setProject, importJSON } = useProjectStore()
   const isPM = useSessionStore((s) => s.isPM())
 
-  // Jeśli projekt już istnieje - przekieruj od razu
+  // Wszystkie hooki MUSZĄ być przed jakimkolwiek warunkowym return
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+    currency: 'EUR' as Currency,
+    exchangeRate: 4.25,
+  })
+
+  // Jeśli projekt już istnieje - przekieruj (komponent Navigate zamiast navigate())
   if (project) {
-    navigate('/tasks', { replace: true })
-    return null
+    return <Navigate to="/tasks" replace />
   }
 
-  // Team member nie może tworzyć projektu - brak projektu = komunikat
+  // Team member bez projektu = komunikat
   if (!isPM) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
@@ -47,15 +56,6 @@ export function Welcome() {
       </div>
     )
   }
-
-  const [form, setForm] = useState({
-    name: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-    currency: 'EUR' as Currency,
-    exchangeRate: 4.25,
-  })
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -160,9 +160,7 @@ export function Welcome() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="rate">
-                    Kurs: 1 EUR =
-                  </Label>
+                  <Label htmlFor="rate">Kurs: 1 EUR =</Label>
                   <div className="relative">
                     <Input
                       id="rate"
