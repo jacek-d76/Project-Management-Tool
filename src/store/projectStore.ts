@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Project, TeamMember, Task, Milestone, ProjectExport } from '@/types'
 import { generateId } from '@/lib/utils'
+import { runScheduler } from '@/lib/scheduler'
 
 interface ProjectState {
   project: Project | null
@@ -24,6 +25,7 @@ interface ProjectState {
   updateTask: (id: string, data: Partial<Task>) => void
   deleteTask: (id: string) => void
   moveTask: (taskId: string, newParentId: string | null, newPosition: number) => void
+  setTaskDates: (id: string, startDate: string | null, endDate: string | null) => void
 
   // Milestone'y (stub - rozbudowane w Etapie 3)
   addMilestone: (milestone: Omit<Milestone, 'id'>) => void
@@ -93,6 +95,21 @@ export const useProjectStore = create<ProjectState>()(
           }
           const toDelete = new Set(collectIds(id))
           return { tasks: state.tasks.filter((t) => !toDelete.has(t.id)) }
+        }),
+
+      setTaskDates: (id, startDate, endDate) =>
+        set((state) => {
+          const updated = state.tasks.map((t) =>
+            t.id === id ? { ...t, startDate, endDate } : t
+          )
+          if (!startDate || !endDate) return { tasks: updated }
+          const schedUpdates = runScheduler(updated, id)
+          return {
+            tasks: updated.map((t) => {
+              const u = schedUpdates.get(t.id)
+              return u ? { ...t, ...u } : t
+            }),
+          }
         }),
 
       moveTask: (taskId, newParentId, newPosition) =>

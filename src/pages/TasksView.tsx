@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/select'
 import { useProjectStore } from '@/store/projectStore'
 import { useSessionStore } from '@/store/sessionStore'
-import type { Task, TaskStatus, TaskPriority, TeamMember } from '@/types'
+import { wouldCreateCycle } from '@/lib/scheduler'
+import type { Task, TaskStatus, TaskPriority, TeamMember, DependencyType } from '@/types'
 
 // ─── Konfiguracja ─────────────────────────────────────────────────────────────
 
@@ -206,7 +207,7 @@ function DraggableTaskRow({
 // ─── TasksView ────────────────────────────────────────────────────────────────
 
 export function TasksView() {
-  const { project, tasks, members, addTask, updateTask, deleteTask, moveTask } = useProjectStore()
+  const { project, tasks, members, addTask, updateTask, deleteTask, moveTask, setTaskDates } = useProjectStore()
   const isPM    = useSessionStore((s) => s.isPM())
   const can     = useSessionStore((s) => s.can)
   const canEdit     = isPM || can('canEditTasks')
@@ -463,11 +464,13 @@ export function TasksView() {
         <TaskPanel
           key={selectedTask.id}
           task={selectedTask}
+          tasks={tasks}
           members={members}
           canEdit={canEdit}
           canProgress={canProgress}
           onClose={() => setSelectedId(null)}
           updateTask={updateTask}
+          setTaskDates={setTaskDates}
           currencyLabel={project?.currency ?? 'EUR'}
         />
       )}
@@ -492,14 +495,16 @@ function workingDaysBetween(startStr: string, endStr: string): number {
 // ─── TaskPanel ────────────────────────────────────────────────────────────────
 
 function TaskPanel({
-  task, members, canEdit, canProgress, onClose, updateTask, currencyLabel,
+  task, tasks, members, canEdit, canProgress, onClose, updateTask, setTaskDates, currencyLabel,
 }: {
   task: Task
+  tasks: Task[]
   members: TeamMember[]
   canEdit: boolean
   canProgress: boolean
   onClose: () => void
   updateTask: (id: string, data: Partial<Task>) => void
+  setTaskDates: (id: string, startDate: string | null, endDate: string | null) => void
   currencyLabel: string
 }) {
   const [localTitle,      setLocalTitle]      = useState(task.title)
@@ -517,11 +522,18 @@ function TaskPanel({
   }
   const [localHours, setLocalHours] = useState<Record<string, HourEntry>>(initHours)
 
+  // Dependency form state
+  const [newDepId,   setNewDepId]   = useState('')
+  const [newDepType, setNewDepType] = useState<DependencyType>('FS')
+  const [newDepLag,  setNewDepLag]  = useState('0')
+  const [depError,   setDepError]   = useState<string | null>(null)
+
   useEffect(() => {
     setLocalTitle(task.title)
     setLocalDesc(task.description)
     setLocalFixedPrice(String(task.fixedPrice ?? ''))
     setLocalHours(initHours())
+    setNewDepId(''); setNewDepLag('0'); setDepError(null)
   }, [task.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (data: Partial<Task>) => updateTask(task.id, data)
@@ -562,6 +574,20 @@ function TaskPanel({
         a.personId === memberId ? { ...a, estimatedHours: estimated } : a
       ),
     })
+  }
+
+  const removeDep = (predId: string) => {
+    update({ dependencies: task.dependencies.filter((d) => d.taskId !== predId) })
+  }
+
+  const addDep = () => {
+    if (!newDepId) return
+    if (wouldCreateCycle(tasks, task.id, newDepId)) {
+      setDepError('Ta zależność tworzyłaby cykl'); return
+    }
+    const lag = parseInt(newDepLag) || 0
+    update({ dependencies: [...task.dependencies, { taskId: newDepId, type: newDepType, lagDays: lag }] })
+    setNewDepId(''); setNewDepLag('0'); setDepError(null)
   }
 
   return (
@@ -635,12 +661,12 @@ function TaskPanel({
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Start</Label>
             <Input type="date" className="h-8 text-xs" value={task.startDate ?? ''} disabled={!canEdit}
-              onChange={(e) => update({ startDate: e.target.value || null })} />
+              onChange={(e) => setTaskDates(task.id, e.target.value || null, task.endDate)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Deadline</Label>
             <Input type="date" className="h-8 text-xs" value={task.endDate ?? ''} disabled={!canEdit}
-              onChange={(e) => update({ endDate: e.target.value || null })} />
+              onChange={(e) => setTaskDates(task.id, task.startDate, e.target.value || null)} />
           </div>
         </div>
 
@@ -746,6 +772,81 @@ function TaskPanel({
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Dependencies */}
+        {canEdit && (
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Zależności (poprzednicy)</Label>
+
+            {/* Existing deps list */}
+            {task.dependencies.length > 0 && (
+              <div className="space-y-1">
+                {task.dependencies.map((dep) => {
+                  const pred = tasks.find((t) => t.id === dep.taskId)
+                  if (!pred) return null
+                  return (
+                    <div key={dep.taskId} className="flex items-center gap-1.5 text-xs rounded-md border px-2 py-1.5 bg-muted/20">
+                      <span className="flex-1 truncate min-w-0">{pred.title}</span>
+                      <span className="shrink-0 font-mono text-[10px] bg-muted rounded px-1">{dep.type}</span>
+                      {dep.lagDays !== 0 && (
+                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                          {dep.lagDays > 0 ? '+' : ''}{dep.lagDays}d
+                        </span>
+                      )}
+                      <button
+                        className="h-4 w-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeDep(dep.taskId)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Add new dependency */}
+            {(() => {
+              const available = tasks.filter(
+                (t) => t.id !== task.id && !task.dependencies.some((d) => d.taskId === t.id)
+              )
+              if (available.length === 0) return null
+              return (
+                <div className="space-y-1.5">
+                  <Select value={newDepId} onValueChange={(v) => { setNewDepId(v); setDepError(null) }}>
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Dodaj poprzednika..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {available.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {newDepId && (
+                    <div className="flex items-center gap-1.5">
+                      <Select value={newDepType} onValueChange={(v) => setNewDepType(v as DependencyType)}>
+                        <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="FS">FS</SelectItem>
+                          <SelectItem value="SS">SS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number" step={1}
+                        className="h-7 w-14 text-xs"
+                        title="Opóźnienie w dniach roboczych (ujemne = wyprzedzenie)"
+                        value={newDepLag}
+                        onChange={(e) => setNewDepLag(e.target.value)}
+                      />
+                      <span className="text-[10px] text-muted-foreground">d</span>
+                      <Button size="sm" className="h-7 px-2 text-xs ml-auto" onClick={addDep}>Dodaj</Button>
+                    </div>
+                  )}
+                  {depError && <p className="text-[10px] text-destructive">{depError}</p>}
+                </div>
+              )
+            })()}
           </div>
         )}
 

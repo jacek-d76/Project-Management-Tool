@@ -6,6 +6,7 @@ import { UsersView } from '@/pages/UsersView'
 import { Settings } from '@/pages/Settings'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
 import { TasksView } from '@/pages/TasksView'
+import { MilestonesView } from '@/pages/MilestonesView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -43,6 +44,14 @@ export default function App() {
               element={
                 <RequireProject>
                   <TasksView />
+                </RequireProject>
+              }
+            />
+            <Route
+              path="/milestones"
+              element={
+                <RequireProject>
+                  <MilestonesView />
                 </RequireProject>
               }
             />

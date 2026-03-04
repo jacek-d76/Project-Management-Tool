@@ -8,6 +8,7 @@ import {
   LogOut,
   FolderKanban,
   UserCog,
+  Flag,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/store/projectStore'
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button'
 const navItems = [
   { to: '/tasks', icon: LayoutList, label: 'Lista zadań' },
   { to: '/gantt', icon: GanttChartSquare, label: 'Gantt' },
+  { to: '/milestones', icon: Flag, label: 'Milestone\'y' },
   { to: '/workload', icon: BarChart3, label: 'Obciążenie' },
   { to: '/costs', icon: DollarSign, label: 'Koszty', pmOnly: true },
 ]
