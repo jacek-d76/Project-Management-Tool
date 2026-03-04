@@ -595,7 +595,7 @@ function TaskPanel({
   }
 
   return (
-    <div className="w-72 border-l flex flex-col overflow-hidden bg-background shrink-0">
+    <div className="w-80 border-l flex flex-col overflow-hidden bg-background shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Task details</span>
@@ -746,30 +746,35 @@ function TaskPanel({
                             onBlur={() => saveHours(m.id)}
                           />
                           <span className="text-[10px] text-muted-foreground">h</span>
-                          {task.startDate && task.endDate && (() => {
-                            const wdays = workingDaysBetween(task.startDate, task.endDate)
-                            const hpd = m.weeklyHours / 5
-                            return (
-                              <>
-                                <span className="text-[10px] text-muted-foreground/70 ml-0.5">
-                                  ({wdays}d&nbsp;×&nbsp;{hpd % 1 === 0 ? hpd : hpd.toFixed(1)}h)
-                                </span>
-                                <button
-                                  title={`Auto-calculate: ${wdays} working days × ${hpd.toFixed(1)} h/day = ${Math.round(wdays * hpd * 2) / 2}h`}
-                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-                                  onClick={() => autoCalcHours(m.id)}
-                                >
-                                  <Calculator className="h-3 w-3" />
-                                </button>
-                              </>
-                            )
-                          })()}
-                          {assignment.estimatedHours > 0 && task.pricingMode === 'hourly' && (
-                            <span className="text-[10px] text-muted-foreground ml-auto">
-                              ≈ {(assignment.estimatedHours * m.hourlyRate).toLocaleString()} {currencyLabel}
-                            </span>
+                          {task.startDate && task.endDate && (
+                            <button
+                              title={`Auto-calculate: ${workingDaysBetween(task.startDate, task.endDate)} working days × ${(m.weeklyHours / 5).toFixed(1)} h/day = ${Math.round(workingDaysBetween(task.startDate, task.endDate) * (m.weeklyHours / 5) * 2) / 2}h`}
+                              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+                              onClick={() => autoCalcHours(m.id)}
+                            >
+                              <Calculator className="h-3 w-3" />
+                            </button>
                           )}
                         </div>
+                        {/* Hint line: formula + cost */}
+                        {(task.startDate && task.endDate || (assignment.estimatedHours > 0 && task.pricingMode === 'hourly')) && (
+                          <div className="flex items-center gap-1 pl-[3.75rem]">
+                            {task.startDate && task.endDate && (() => {
+                              const wdays = workingDaysBetween(task.startDate, task.endDate)
+                              const hpd = m.weeklyHours / 5
+                              return (
+                                <span className="text-[10px] text-muted-foreground/70">
+                                  {wdays}d&nbsp;×&nbsp;{hpd % 1 === 0 ? hpd : hpd.toFixed(1)}h/d
+                                </span>
+                              )
+                            })()}
+                            {assignment.estimatedHours > 0 && task.pricingMode === 'hourly' && (
+                              <span className="text-[10px] text-muted-foreground ml-auto">
+                                ≈&nbsp;{(assignment.estimatedHours * m.hourlyRate).toLocaleString()}&nbsp;{currencyLabel}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {/* Actual hours row */}
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] text-muted-foreground w-14 shrink-0">Actual:</span>
