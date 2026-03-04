@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutList,
   GanttChartSquare,
@@ -26,6 +26,7 @@ const navItems = [
 export function Sidebar() {
   const project = useProjectStore((s) => s.project)
   const { isPM, logout, currentUser } = useSessionStore()
+  const navigate = useNavigate()
 
   return (
     <aside className="flex h-screen w-56 flex-col border-r bg-card">
@@ -109,7 +110,7 @@ export function Sidebar() {
           variant="ghost"
           size="sm"
           className="w-full justify-start gap-3 text-muted-foreground"
-          onClick={logout}
+          onClick={() => { logout(); navigate('/') }}
         >
           <LogOut className="h-4 w-4" />
           Wyloguj
