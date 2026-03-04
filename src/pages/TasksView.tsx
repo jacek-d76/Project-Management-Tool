@@ -4,7 +4,7 @@ import {
   PointerSensor, useSensor, useSensors,
   type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core'
-import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo } from 'lucide-react'
+import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo, Calculator } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -258,7 +258,7 @@ export function TasksView() {
       title: newTitle.trim(), description: '',
       status: 'TODO', priority: 'MEDIUM',
       startDate: null, endDate: null,
-      estimatedHours: 0, progress: 0,
+      progress: 0,
       pricingMode: 'hourly', fixedPrice: null,
       assignments: [], dependencies: [], position,
     })
@@ -475,6 +475,20 @@ export function TasksView() {
   )
 }
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+function workingDaysBetween(startStr: string, endStr: string): number {
+  const end = new Date(endStr)
+  let count = 0
+  const d = new Date(startStr)
+  while (d <= end) {
+    const day = d.getDay()
+    if (day !== 0 && day !== 6) count++
+    d.setDate(d.getDate() + 1)
+  }
+  return count
+}
+
 // ─── TaskPanel ────────────────────────────────────────────────────────────────
 
 function TaskPanel({
@@ -490,24 +504,63 @@ function TaskPanel({
 }) {
   const [localTitle,      setLocalTitle]      = useState(task.title)
   const [localDesc,       setLocalDesc]       = useState(task.description)
-  const [localEstHours,   setLocalEstHours]   = useState(String(task.estimatedHours))
   const [localFixedPrice, setLocalFixedPrice] = useState(String(task.fixedPrice ?? ''))
+
+  // Local state for per-person hour inputs (to avoid saving on every keystroke)
+  type HourEntry = { est: string; actual: string }
+  const initHours = () => {
+    const r: Record<string, HourEntry> = {}
+    task.assignments.forEach((a) => {
+      r[a.personId] = { est: String(a.estimatedHours), actual: a.actualHours != null ? String(a.actualHours) : '' }
+    })
+    return r
+  }
+  const [localHours, setLocalHours] = useState<Record<string, HourEntry>>(initHours)
 
   useEffect(() => {
     setLocalTitle(task.title)
     setLocalDesc(task.description)
-    setLocalEstHours(String(task.estimatedHours))
     setLocalFixedPrice(String(task.fixedPrice ?? ''))
+    setLocalHours(initHours())
   }, [task.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (data: Partial<Task>) => updateTask(task.id, data)
 
   const toggleMember = (memberId: string) => {
     const has = task.assignments.some((a) => a.personId === memberId)
+    if (has) {
+      update({ assignments: task.assignments.filter((a) => a.personId !== memberId) })
+      setLocalHours((prev) => { const r = { ...prev }; delete r[memberId]; return r })
+    } else {
+      update({ assignments: [...task.assignments, { personId: memberId, estimatedHours: 0, actualHours: null }] })
+      setLocalHours((prev) => ({ ...prev, [memberId]: { est: '0', actual: '' } }))
+    }
+  }
+
+  const saveHours = (memberId: string) => {
+    const entry = localHours[memberId]
+    if (!entry) return
+    const estimatedHours = parseFloat(entry.est) || 0
+    const actualHours    = entry.actual !== '' ? parseFloat(entry.actual) || 0 : null
     update({
-      assignments: has
-        ? task.assignments.filter((a) => a.personId !== memberId)
-        : [...task.assignments, { personId: memberId }],
+      assignments: task.assignments.map((a) =>
+        a.personId === memberId ? { ...a, estimatedHours, actualHours } : a
+      ),
+    })
+  }
+
+  const autoCalcHours = (memberId: string) => {
+    if (!task.startDate || !task.endDate) return
+    const member = members.find((m) => m.id === memberId)
+    if (!member) return
+    const days        = workingDaysBetween(task.startDate, task.endDate)
+    const hoursPerDay = member.weeklyHours / 5
+    const estimated   = Math.round(days * hoursPerDay * 2) / 2 // zaokrąglenie do 0.5h
+    setLocalHours((prev) => ({ ...prev, [memberId]: { ...prev[memberId], est: String(estimated) } }))
+    update({
+      assignments: task.assignments.map((a) =>
+        a.personId === memberId ? { ...a, estimatedHours: estimated } : a
+      ),
     })
   }
 
@@ -591,16 +644,7 @@ function TaskPanel({
           </div>
         </div>
 
-        {/* Estimated hours */}
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Szacowane godziny</Label>
-          <Input type="number" min={0} step={0.5} className="h-8 text-xs"
-            value={localEstHours} disabled={!canEdit}
-            onChange={(e) => setLocalEstHours(e.target.value)}
-            onBlur={() => update({ estimatedHours: parseFloat(localEstHours) || 0 })} />
-        </div>
-
-        {/* Pricing */}
+        {/* Pricing mode */}
         {canEdit && (
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Wycena</Label>
@@ -625,23 +669,83 @@ function TaskPanel({
           </div>
         )}
 
-        {/* Assigned members */}
+        {/* Assigned members with per-person hours */}
         {members.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Przypisane osoby</Label>
-            <div className="space-y-0.5">
-              {members.filter((m) => m.isActive).map((m) => (
-                <label key={m.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/40 rounded px-1 py-1">
-                  <input type="checkbox"
-                    checked={task.assignments.some((a) => a.personId === m.id)}
-                    disabled={!canEdit}
-                    onChange={() => toggleMember(m.id)}
-                    className="h-3.5 w-3.5" />
-                  <span>{m.name}</span>
-                  {m.projectRole && <span className="text-muted-foreground">({m.projectRole})</span>}
-                </label>
-              ))}
-            </div>
+            {members.filter((m) => m.isActive).map((m) => {
+              const assignment = task.assignments.find((a) => a.personId === m.id)
+              const isAssigned = !!assignment
+              const hours = localHours[m.id]
+              return (
+                <div key={m.id} className={`rounded-md border ${isAssigned ? 'border-border bg-muted/20' : 'border-transparent'}`}>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5">
+                    <input type="checkbox"
+                      checked={isAssigned}
+                      disabled={!canEdit}
+                      onChange={() => toggleMember(m.id)}
+                      className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium flex-1">{m.name}</span>
+                    {m.projectRole && <span className="text-muted-foreground text-[10px]">{m.projectRole}</span>}
+                    <span className="text-muted-foreground text-[10px] shrink-0">{m.hourlyRate} {currencyLabel}/h</span>
+                  </label>
+
+                  {isAssigned && hours && (
+                    <div className="px-2 pb-2 space-y-1.5">
+                      {/* Estimated hours row */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Planowane:</span>
+                        <Input
+                          type="number" min={0} step={0.5}
+                          className="h-6 text-xs w-16 px-1.5"
+                          value={hours.est}
+                          disabled={!canEdit}
+                          onChange={(e) => setLocalHours((p) => ({ ...p, [m.id]: { ...p[m.id], est: e.target.value } }))}
+                          onBlur={() => saveHours(m.id)}
+                        />
+                        <span className="text-[10px] text-muted-foreground">h</span>
+                        {/* Auto-calc from dates */}
+                        {canEdit && task.startDate && task.endDate && (
+                          <button
+                            title={`Oblicz z dat: ${workingDaysBetween(task.startDate, task.endDate)} dni rob. × ${(m.weeklyHours/5).toFixed(1)} h/dzień`}
+                            className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+                            onClick={() => autoCalcHours(m.id)}
+                          >
+                            <Calculator className="h-3 w-3" />
+                          </button>
+                        )}
+                        {/* Show estimated cost hint */}
+                        {assignment.estimatedHours > 0 && task.pricingMode === 'hourly' && (
+                          <span className="text-[10px] text-muted-foreground ml-auto">
+                            ≈ {(assignment.estimatedHours * m.hourlyRate).toLocaleString()} {currencyLabel}
+                          </span>
+                        )}
+                      </div>
+                      {/* Actual hours row */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Wykonano:</span>
+                        <Input
+                          type="number" min={0} step={0.5}
+                          className="h-6 text-xs w-16 px-1.5"
+                          value={hours.actual}
+                          placeholder="—"
+                          disabled={!canProgress}
+                          onChange={(e) => setLocalHours((p) => ({ ...p, [m.id]: { ...p[m.id], actual: e.target.value } }))}
+                          onBlur={() => saveHours(m.id)}
+                        />
+                        <span className="text-[10px] text-muted-foreground">h</span>
+                        {/* Actual cost */}
+                        {assignment.actualHours != null && assignment.actualHours > 0 && task.pricingMode === 'hourly' && (
+                          <span className="text-[10px] text-muted-foreground ml-auto">
+                            = {(assignment.actualHours * m.hourlyRate).toLocaleString()} {currencyLabel}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

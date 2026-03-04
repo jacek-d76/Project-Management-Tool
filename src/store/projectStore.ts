@@ -196,13 +196,26 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'project-manager-storage',
-      version: 2,
+      version: 3,
       migrate: (persistedState, version) => {
         const s = persistedState as Record<string, unknown>
         // v1 → v2: persons (Person[]) renamed to members (TeamMember[])
         if (version < 2 && Array.isArray(s.persons)) {
           s.members = s.members ?? []
           delete s.persons
+        }
+        // v2 → v3: task.estimatedHours removed, assignments get estimatedHours + actualHours
+        if (version < 3 && Array.isArray(s.tasks)) {
+          s.tasks = (s.tasks as Record<string, unknown>[]).map((t) => {
+            const assignments = ((t.assignments as Record<string, unknown>[]) ?? []).map((a) => ({
+              personId: a.personId,
+              estimatedHours: Number(a.estimatedHours ?? a.allocatedHours ?? 0),
+              actualHours: a.actualHours != null ? Number(a.actualHours) : null,
+            }))
+            const { estimatedHours: _drop, ...rest } = t as Record<string, unknown>
+            void _drop
+            return { ...rest, assignments }
+          })
         }
         return s
       },

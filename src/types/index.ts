@@ -55,7 +55,8 @@ export type DependencyType = 'FS' | 'SS'
 
 export interface TaskAssignment {
   personId: string
-  allocatedHours?: number // opcjonalne: ile godzin ta osoba na tym zadaniu
+  estimatedHours: number      // PM: planowane godziny dla tej osoby
+  actualHours: number | null  // Zespół: faktycznie przepracowane (po zakończeniu)
 }
 
 export interface TaskDependency {
@@ -74,7 +75,6 @@ export interface Task {
   priority: TaskPriority
   startDate: string | null   // "YYYY-MM-DD"
   endDate: string | null
-  estimatedHours: number
   progress: number           // 0-100
   pricingMode: PricingMode
   fixedPrice: number | null  // w walucie bazowej, jeśli pricingMode = 'fixed'
