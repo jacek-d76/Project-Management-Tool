@@ -9,6 +9,7 @@ import { TasksView } from '@/pages/TasksView'
 import { MilestonesView } from '@/pages/MilestonesView'
 import { GanttView } from '@/pages/GanttView'
 import { WorkloadView } from '@/pages/WorkloadView'
+import { CostsView } from '@/pages/CostsView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -79,10 +80,7 @@ export default function App() {
               element={
                 <RequireProject>
                   <RequirePM>
-                    <PlaceholderPage
-                      title="Cost analysis"
-                      description="Cost and pricing view will be built in Stage 6."
-                    />
+                    <CostsView />
                   </RequirePM>
                 </RequireProject>
               }
