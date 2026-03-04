@@ -746,15 +746,24 @@ function TaskPanel({
                             onBlur={() => saveHours(m.id)}
                           />
                           <span className="text-[10px] text-muted-foreground">h</span>
-                          {task.startDate && task.endDate && (
-                            <button
-                              title={`Oblicz z dat: ${workingDaysBetween(task.startDate, task.endDate)} dni rob. × ${(m.weeklyHours/5).toFixed(1)} h/dzień`}
-                              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-                              onClick={() => autoCalcHours(m.id)}
-                            >
-                              <Calculator className="h-3 w-3" />
-                            </button>
-                          )}
+                          {task.startDate && task.endDate && (() => {
+                            const wdays = workingDaysBetween(task.startDate, task.endDate)
+                            const hpd = m.weeklyHours / 5
+                            return (
+                              <>
+                                <span className="text-[10px] text-muted-foreground/70 ml-0.5">
+                                  ({wdays}d&nbsp;×&nbsp;{hpd % 1 === 0 ? hpd : hpd.toFixed(1)}h)
+                                </span>
+                                <button
+                                  title={`Auto-oblicz: ${wdays} dni rob. × ${hpd.toFixed(1)} h/dzień = ${Math.round(wdays * hpd * 2) / 2}h`}
+                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+                                  onClick={() => autoCalcHours(m.id)}
+                                >
+                                  <Calculator className="h-3 w-3" />
+                                </button>
+                              </>
+                            )
+                          })()}
                           {assignment.estimatedHours > 0 && task.pricingMode === 'hourly' && (
                             <span className="text-[10px] text-muted-foreground ml-auto">
                               ≈ {(assignment.estimatedHours * m.hourlyRate).toLocaleString()} {currencyLabel}
