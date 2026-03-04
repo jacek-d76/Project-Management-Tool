@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, Check, X, Users } from 'lucide-react'
+import { Plus, Trash2, Pencil, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { useProjectStore } from '@/store/projectStore'
-import { generateId } from '@/lib/utils'
 import type { Person } from '@/types'
 
 const emptyForm = {
@@ -47,7 +46,7 @@ export function TeamView() {
     if (editId) {
       updatePerson(editId, form)
     } else {
-      addPerson({ ...form, id: generateId() })
+      addPerson(form)
     }
     setOpen(false)
   }

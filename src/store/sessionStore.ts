@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { create } from 'zustand'
 import type { UserRole } from '@/types'
 
