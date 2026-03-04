@@ -8,6 +8,7 @@ import { PlaceholderPage } from '@/pages/PlaceholderPage'
 import { TasksView } from '@/pages/TasksView'
 import { MilestonesView } from '@/pages/MilestonesView'
 import { GanttView } from '@/pages/GanttView'
+import { WorkloadView } from '@/pages/WorkloadView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -68,10 +69,7 @@ export default function App() {
               path="/workload"
               element={
                 <RequireProject>
-                  <PlaceholderPage
-                    title="Workload view"
-                    description="Workload heatmap will be built in Stage 5."
-                  />
+                  <WorkloadView />
                 </RequireProject>
               }
             />
