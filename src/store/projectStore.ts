@@ -23,6 +23,7 @@ interface ProjectState {
   addTask: (task: Omit<Task, 'id'>) => void
   updateTask: (id: string, data: Partial<Task>) => void
   deleteTask: (id: string) => void
+  moveTask: (taskId: string, newParentId: string | null, newPosition: number) => void
 
   // Milestone'y (stub - rozbudowane w Etapie 3)
   addMilestone: (milestone: Omit<Milestone, 'id'>) => void
@@ -92,6 +93,44 @@ export const useProjectStore = create<ProjectState>()(
           }
           const toDelete = new Set(collectIds(id))
           return { tasks: state.tasks.filter((t) => !toDelete.has(t.id)) }
+        }),
+
+      moveTask: (taskId, newParentId, newPosition) =>
+        set((state) => {
+          const dragged = state.tasks.find((t) => t.id === taskId)
+          if (!dragged) return {}
+          const oldParentId = dragged.parentId
+
+          // Siblings at new parent (excluding dragged task)
+          const newSiblings = state.tasks
+            .filter((t) => t.parentId === newParentId && t.id !== taskId)
+            .sort((a, b) => a.position - b.position)
+
+          // Insert dragged at target position
+          newSiblings.splice(newPosition, 0, dragged)
+
+          // Build position updates for new parent group
+          const updates: Record<string, { parentId: string | null; position: number }> = {}
+          newSiblings.forEach((t, i) => {
+            updates[t.id] = { parentId: newParentId, position: i }
+          })
+
+          // Re-number old parent's siblings if parent changed
+          if (oldParentId !== newParentId) {
+            state.tasks
+              .filter((t) => t.parentId === oldParentId && t.id !== taskId)
+              .sort((a, b) => a.position - b.position)
+              .forEach((t, i) => {
+                if (!updates[t.id]) updates[t.id] = { parentId: t.parentId, position: i }
+                else updates[t.id].position = i
+              })
+          }
+
+          return {
+            tasks: state.tasks.map((t) =>
+              updates[t.id] ? { ...t, ...updates[t.id] } : t
+            ),
+          }
         }),
 
       // ─── Milestone'y ─────────────────────────────────────────────────────

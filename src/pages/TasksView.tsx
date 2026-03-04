@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo } from 'lucide-react'
+import {
+  DndContext, DragOverlay, useDraggable, useDroppable,
+  PointerSensor, useSensor, useSensors,
+  type DragStartEvent, type DragOverEvent, type DragEndEvent,
+} from '@dnd-kit/core'
+import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,10 +32,13 @@ const PRIORITY_OPTS: { value: TaskPriority; label: string; cls: string }[] = [
   { value: 'CRITICAL', label: 'Krytyczny', cls: 'bg-red-100 text-red-700' },
 ]
 
-const statusLabel = (s: TaskStatus) => STATUS_OPTS.find((o) => o.value === s)?.label ?? s
-const statusCls   = (s: TaskStatus) => STATUS_OPTS.find((o) => o.value === s)?.cls ?? ''
+const statusLabel   = (s: TaskStatus)   => STATUS_OPTS.find((o) => o.value === s)?.label ?? s
+const statusCls     = (s: TaskStatus)   => STATUS_OPTS.find((o) => o.value === s)?.cls ?? ''
 const priorityLabel = (p: TaskPriority) => PRIORITY_OPTS.find((o) => o.value === p)?.label ?? p
 const priorityCls   = (p: TaskPriority) => PRIORITY_OPTS.find((o) => o.value === p)?.cls ?? ''
+
+type DropZone = 'before' | 'after' | 'inside'
+type DropInfo = { id: string; zone: DropZone } | null
 
 // ─── InlineAdd ────────────────────────────────────────────────────────────────
 
@@ -46,7 +54,7 @@ function InlineAdd({
   onCancel: () => void
 }) {
   return (
-    <div className="flex items-center gap-2 py-1.5" style={{ paddingLeft: `${depth * 20 + 8}px` }}>
+    <div className="flex items-center gap-2 py-1.5" style={{ paddingLeft: `${depth * 20 + 28}px` }}>
       <Input
         ref={inputRef}
         className="h-7 text-sm"
@@ -67,10 +75,138 @@ function InlineAdd({
   )
 }
 
+// ─── DraggableTaskRow ────────────────────────────────────────────────────────
+
+function DraggableTaskRow({
+  task, depth, isSelected, isExpanded, hasChildren, canEdit,
+  dropInfo, isDragActive,
+  onSelect, onToggleExpand, onStartAdd, onDelete,
+  children,
+}: {
+  task: Task
+  depth: number
+  isSelected: boolean
+  isExpanded: boolean
+  hasChildren: boolean
+  canEdit: boolean
+  dropInfo: DropInfo
+  isDragActive: boolean
+  onSelect: () => void
+  onToggleExpand: () => void
+  onStartAdd: () => void
+  onDelete: () => void
+  children?: React.ReactNode
+}) {
+  const { setNodeRef: setDropRef } = useDroppable({ id: task.id })
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: task.id })
+
+  const showBefore = dropInfo?.id === task.id && dropInfo.zone === 'before'
+  const showAfter  = dropInfo?.id === task.id && dropInfo.zone === 'after'
+  const showInside = dropInfo?.id === task.id && dropInfo.zone === 'inside'
+  const indent = depth * 20 + 8
+
+  return (
+    <div>
+      {/* Drop line: before */}
+      {showBefore && (
+        <div className="h-0.5 bg-primary rounded-full my-0.5" style={{ marginLeft: indent + 20, marginRight: 8 }} />
+      )}
+
+      <div
+        ref={setDropRef}
+        className={[
+          'group flex items-center gap-1.5 rounded-md py-1.5 cursor-pointer transition-colors',
+          isDragging ? 'opacity-30' : '',
+          isSelected ? 'bg-accent border border-primary/30' : 'hover:bg-accent/50',
+          showInside ? 'ring-2 ring-primary ring-inset rounded-md' : '',
+        ].join(' ')}
+        style={{ paddingLeft: indent }}
+        onClick={() => !isDragActive && onSelect()}
+      >
+        {/* Drag handle */}
+        {canEdit ? (
+          <div
+            ref={setDragRef}
+            {...attributes}
+            {...listeners}
+            className="h-5 w-5 shrink-0 flex items-center justify-center opacity-0 group-hover:opacity-40 hover:!opacity-100 cursor-grab active:cursor-grabbing touch-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="h-5 w-5 shrink-0" />
+        )}
+
+        {/* Expand toggle */}
+        <button
+          className="h-5 w-5 shrink-0 flex items-center justify-center rounded hover:bg-muted"
+          onClick={(e) => { e.stopPropagation(); if (hasChildren) onToggleExpand() }}
+        >
+          {hasChildren
+            ? isExpanded
+              ? <ChevronDown  className="h-3.5 w-3.5 text-muted-foreground" />
+              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            : <span className="h-3.5 w-3.5 block" />
+          }
+        </button>
+
+        {/* Progress mini-bar */}
+        <div className="h-1.5 w-8 rounded-full bg-muted shrink-0 overflow-hidden">
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progress}%` }} />
+        </div>
+
+        {/* Title */}
+        <span className={`flex-1 text-sm truncate ${task.status === 'DONE' ? 'line-through text-muted-foreground' : ''}`}>
+          {task.title}
+        </span>
+
+        {/* Badges */}
+        <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(task.status)}`}>
+          {statusLabel(task.status)}
+        </span>
+        <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full ${priorityCls(task.priority)}`}>
+          {priorityLabel(task.priority)}
+        </span>
+
+        {/* Hover actions */}
+        <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 shrink-0 pr-1">
+          {canEdit && (
+            <button
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+              title="Dodaj podzadanie"
+              onClick={(e) => { e.stopPropagation(); onStartAdd() }}
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          )}
+          {canEdit && (
+            <button
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-destructive/60 hover:text-destructive"
+              title="Usuń"
+              onClick={(e) => { e.stopPropagation(); onDelete() }}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Drop line: after */}
+      {showAfter && (
+        <div className="h-0.5 bg-primary rounded-full my-0.5" style={{ marginLeft: indent + 20, marginRight: 8 }} />
+      )}
+
+      {/* Children (visible when expanded) */}
+      {isExpanded && children}
+    </div>
+  )
+}
+
 // ─── TasksView ────────────────────────────────────────────────────────────────
 
 export function TasksView() {
-  const { project, tasks, members, addTask, updateTask, deleteTask } = useProjectStore()
+  const { project, tasks, members, addTask, updateTask, deleteTask, moveTask } = useProjectStore()
   const isPM    = useSessionStore((s) => s.isPM())
   const can     = useSessionStore((s) => s.can)
   const canEdit     = isPM || can('canEditTasks')
@@ -84,9 +220,18 @@ export function TasksView() {
   const [filterPriority, setFilterPriority] = useState('all')
   const [filterMember,   setFilterMember]   = useState('all')
 
+  // Drag state
+  const [dragId,    setDragId]    = useState<string | null>(null)
+  const [dropInfo,  setDropInfo]  = useState<DropInfo>(null)
+  const pointerY = useRef(0)
+
   const addInputRef = useRef<HTMLInputElement>(null)
 
-  const rootTasks  = tasks.filter((t) => !t.parentId).sort((a, b) => a.position - b.position)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  const rootTasks   = tasks.filter((t) => !t.parentId).sort((a, b) => a.position - b.position)
   const getChildren = (pid: string) => tasks.filter((t) => t.parentId === pid).sort((a, b) => a.position - b.position)
   const selectedTask = tasks.find((t) => t.id === selectedId) ?? null
 
@@ -96,7 +241,6 @@ export function TasksView() {
     if (filterMember   !== 'all' && !t.assignments.some((a) => a.personId === filterMember)) return false
     return true
   }
-
   const rootVisible = (t: Task) => passesFilter(t) || getChildren(t.id).some(passesFilter)
 
   const startAdd = (parentId: string | 'root') => {
@@ -110,21 +254,13 @@ export function TasksView() {
     const siblings = parentId ? getChildren(parentId) : rootTasks
     const position = siblings.length > 0 ? Math.max(...siblings.map((t) => t.position)) + 1 : 0
     addTask({
-      projectId: project.id,
-      parentId,
-      title: newTitle.trim(),
-      description: '',
-      status: 'TODO',
-      priority: 'MEDIUM',
-      startDate: null,
-      endDate: null,
-      estimatedHours: 0,
-      progress: 0,
-      pricingMode: 'hourly',
-      fixedPrice: null,
-      assignments: [],
-      dependencies: [],
-      position,
+      projectId: project.id, parentId,
+      title: newTitle.trim(), description: '',
+      status: 'TODO', priority: 'MEDIUM',
+      startDate: null, endDate: null,
+      estimatedHours: 0, progress: 0,
+      pricingMode: 'hourly', fixedPrice: null,
+      assignments: [], dependencies: [], position,
     })
     setNewTitle('')
     setAddingTo(null)
@@ -144,9 +280,57 @@ export function TasksView() {
     if (selectedId === task.id) setSelectedId(null)
   }
 
-  // ─── Task Row ───────────────────────────────────────────────────────────────
+  // ─── Drag helpers ───────────────────────────────────────────────────────────
 
-  const renderTask = (task: Task, depth: number) => {
+  const isDescendantOrSelf = (ancestorId: string, candidateId: string): boolean => {
+    if (ancestorId === candidateId) return true
+    const c = tasks.find((t) => t.id === candidateId)
+    if (!c?.parentId) return false
+    return isDescendantOrSelf(ancestorId, c.parentId)
+  }
+
+  const handleDragStart = (e: DragStartEvent) => {
+    setDragId(String(e.active.id))
+  }
+
+  const handleDragOver = (e: DragOverEvent) => {
+    if (!e.over) { setDropInfo(null); return }
+    const targetId = String(e.over.id)
+    if (targetId === dragId || (dragId && isDescendantOrSelf(dragId, targetId))) {
+      setDropInfo(null); return
+    }
+    const rect   = e.over.rect
+    const relY   = (pointerY.current - rect.top) / rect.height
+    const zone: DropZone = relY < 0.3 ? 'before' : relY > 0.7 ? 'after' : 'inside'
+    setDropInfo({ id: targetId, zone })
+  }
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const draggedId = String(e.active.id)
+    if (dropInfo && draggedId !== dropInfo.id && !isDescendantOrSelf(draggedId, dropInfo.id)) {
+      const target = tasks.find((t) => t.id === dropInfo.id)!
+      if (dropInfo.zone === 'inside') {
+        const childCount = tasks.filter((t) => t.parentId === dropInfo.id).length
+        moveTask(draggedId, dropInfo.id, childCount)
+        setExpanded((prev) => new Set([...prev, dropInfo.id]))
+      } else {
+        const siblings = tasks
+          .filter((t) => t.parentId === target.parentId && t.id !== draggedId)
+          .sort((a, b) => a.position - b.position)
+        const idx    = siblings.findIndex((t) => t.id === dropInfo.id)
+        const newPos = dropInfo.zone === 'before' ? idx : idx + 1
+        moveTask(draggedId, target.parentId, newPos)
+      }
+    }
+    setDragId(null)
+    setDropInfo(null)
+  }
+
+  const handleDragCancel = () => { setDragId(null); setDropInfo(null) }
+
+  // ─── Recursive task renderer ─────────────────────────────────────────────
+
+  const renderTask = (task: Task, depth: number): React.ReactNode => {
     const children   = getChildren(task.id)
     const isExpanded = expanded.has(task.id)
     const isSelected = selectedId === task.id
@@ -155,83 +339,42 @@ export function TasksView() {
     if (depth > 0 && !passesFilter(task)) return null
 
     return (
-      <div key={task.id}>
-        <div
-          className={`group flex items-center gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
-            ${isSelected ? 'bg-accent border border-primary/30' : 'hover:bg-accent/50'}
-          `}
-          style={{ paddingLeft: `${depth * 20 + 8}px` }}
-          onClick={() => setSelectedId(isSelected ? null : task.id)}
-        >
-          {/* Expand toggle */}
-          <button
-            className="h-5 w-5 shrink-0 flex items-center justify-center rounded hover:bg-muted"
-            onClick={(e) => { e.stopPropagation(); if (hasChildren) toggleExpand(task.id) }}
-          >
-            {hasChildren
-              ? isExpanded
-                ? <ChevronDown  className="h-3.5 w-3.5 text-muted-foreground" />
-                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-              : <span className="h-3.5 w-3.5 block" />
-            }
-          </button>
-
-          {/* Progress mini-bar */}
-          <div className="h-1.5 w-8 rounded-full bg-muted shrink-0 overflow-hidden">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progress}%` }} />
-          </div>
-
-          {/* Title */}
-          <span className={`flex-1 text-sm truncate ${task.status === 'DONE' ? 'line-through text-muted-foreground' : ''}`}>
-            {task.title}
-          </span>
-
-          {/* Badges */}
-          <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(task.status)}`}>
-            {statusLabel(task.status)}
-          </span>
-          <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full ${priorityCls(task.priority)}`}>
-            {priorityLabel(task.priority)}
-          </span>
-
-          {/* Hover actions */}
-          <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 shrink-0">
-            {canEdit && depth === 0 && (
-              <button
-                className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-                title="Dodaj podzadanie"
-                onClick={(e) => { e.stopPropagation(); if (!isExpanded) toggleExpand(task.id); startAdd(task.id) }}
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-            )}
-            {canEdit && (
-              <button
-                className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-destructive/60 hover:text-destructive"
-                title="Usuń"
-                onClick={(e) => { e.stopPropagation(); handleDelete(task) }}
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Children */}
-        {isExpanded && (
-          <div>
-            {children.map((child) => renderTask(child, depth + 1))}
-            {addingTo === task.id && <InlineAdd parentId={task.id} depth={depth + 1} value={newTitle} inputRef={addInputRef} onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)} />}
-          </div>
+      <DraggableTaskRow
+        key={task.id}
+        task={task}
+        depth={depth}
+        isSelected={isSelected}
+        isExpanded={isExpanded}
+        hasChildren={hasChildren}
+        canEdit={canEdit}
+        dropInfo={dropInfo}
+        isDragActive={!!dragId}
+        onSelect={() => setSelectedId(isSelected ? null : task.id)}
+        onToggleExpand={() => toggleExpand(task.id)}
+        onStartAdd={() => { if (!isExpanded) toggleExpand(task.id); startAdd(task.id) }}
+        onDelete={() => handleDelete(task)}
+      >
+        {children.map((child) => renderTask(child, depth + 1))}
+        {addingTo === task.id && (
+          <InlineAdd
+            parentId={task.id} depth={depth + 1}
+            value={newTitle} inputRef={addInputRef}
+            onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)}
+          />
         )}
-      </div>
+      </DraggableTaskRow>
     )
   }
+
+  const draggedTask = dragId ? tasks.find((t) => t.id === dragId) : null
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div
+      className="flex h-full overflow-hidden"
+      onPointerMove={(e) => { pointerY.current = e.clientY }}
+    >
       {/* Task list */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Filter bar */}
@@ -268,24 +411,50 @@ export function TasksView() {
           )}
         </div>
 
-        {/* Task tree */}
+        {/* Task tree with DnD */}
         <div className="flex-1 overflow-auto p-3">
-          {rootTasks.length === 0 && addingTo !== 'root' ? (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-muted-foreground">
-              <ListTodo className="h-12 w-12 opacity-30" />
-              <div>
-                <p className="font-medium">Brak zadań</p>
-                <p className="text-sm">
-                  {canEdit ? 'Kliknij "+ Dodaj zadanie" aby rozpocząć.' : 'Brak zadań w tym projekcie.'}
-                </p>
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            {rootTasks.length === 0 && addingTo !== 'root' ? (
+              <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-muted-foreground">
+                <ListTodo className="h-12 w-12 opacity-30" />
+                <div>
+                  <p className="font-medium">Brak zadań</p>
+                  <p className="text-sm">
+                    {canEdit ? 'Kliknij "+ Dodaj zadanie" aby rozpocząć.' : 'Brak zadań w tym projekcie.'}
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {rootTasks.map((task) => renderTask(task, 0))}
-              {addingTo === 'root' && <InlineAdd parentId={null} depth={0} value={newTitle} inputRef={addInputRef} onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)} />}
-            </div>
-          )}
+            ) : (
+              <div className="space-y-0.5">
+                {rootTasks.map((task) => renderTask(task, 0))}
+                {addingTo === 'root' && (
+                  <InlineAdd
+                    parentId={null} depth={0}
+                    value={newTitle} inputRef={addInputRef}
+                    onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)}
+                  />
+                )}
+              </div>
+            )}
+
+            <DragOverlay dropAnimation={null}>
+              {draggedTask && (
+                <div className="flex items-center gap-2 rounded-md bg-background border border-primary shadow-lg px-3 py-2 text-sm opacity-90 pointer-events-none">
+                  <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium">{draggedTask.title}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(draggedTask.status)}`}>
+                    {statusLabel(draggedTask.status)}
+                  </span>
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
         </div>
       </div>
 
@@ -324,7 +493,6 @@ function TaskPanel({
   const [localEstHours,   setLocalEstHours]   = useState(String(task.estimatedHours))
   const [localFixedPrice, setLocalFixedPrice] = useState(String(task.fixedPrice ?? ''))
 
-  // Reset local state when task changes (key prop handles re-mount, but just in case)
   useEffect(() => {
     setLocalTitle(task.title)
     setLocalDesc(task.description)
@@ -394,7 +562,9 @@ function TaskPanel({
 
         {/* Progress */}
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Postęp: <span className="font-medium text-foreground">{task.progress}%</span></Label>
+          <Label className="text-xs text-muted-foreground">
+            Postęp: <span className="font-medium text-foreground">{task.progress}%</span>
+          </Label>
           <input
             type="range" min={0} max={100} step={5}
             value={task.progress}
