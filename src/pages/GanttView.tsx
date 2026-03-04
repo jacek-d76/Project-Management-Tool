@@ -6,16 +6,17 @@ import type { Task } from '@/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ROW_H  = 32   // task row height
-const BAR_H  = 18   // bar height inside row
-const LEFT_W = 220  // left panel width
-const HDR_H  = 44   // date header height (2 rows)
-const MS_H   = 22   // milestone strip height at top of SVG
+const ROW_H = 32   // task row height
+const BAR_H = 18   // bar height inside row
+const HDR_H = 44   // date header height (2 rows)
+const MS_H  = 22   // milestone strip height at top of SVG
 
 const ZOOM_OPTS = {
-  week:    { dayW: 40, label: 'Tydzień' },
-  month:   { dayW: 14, label: 'Miesiąc' },
-  quarter: { dayW:  5, label: 'Kwartał' },
+  week:     { dayW: 40,  label: 'Tydzień'  },
+  month:    { dayW: 14,  label: 'Miesiąc'  },
+  quarter:  { dayW:  5,  label: 'Kwartał'  },
+  halfyear: { dayW:  3,  label: 'Pół roku' },
+  year:     { dayW: 1.5, label: 'Rok'      },
 } as const
 type ZoomKey = keyof typeof ZOOM_OPTS
 
@@ -41,7 +42,8 @@ export function GanttView() {
   const can     = useSessionStore((s) => s.can)
   const canEdit = isPM || can('canEditTasks')
 
-  const [zoom, setZoom] = useState<ZoomKey>('month')
+  const [zoom, setZoom]   = useState<ZoomKey>('month')
+  const [leftW, setLeftW] = useState(220)
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(tasks.map((t) => t.id))
   )
@@ -100,29 +102,70 @@ export function GanttView() {
 
   const topRow: { x: number; w: number; label: string }[] = []
   const botRow: { x: number; w: number; label: string }[] = []
-  let lastMK = '', lastMX = 0
 
-  for (let i = 0; i < totalDays; i++) {
-    const d = addDays(gsDate, i)
-    const x = i * dayW
-    const mk = `${d.getFullYear()}-${d.getMonth()}`
-
-    if (mk !== lastMK) {
-      if (topRow.length) topRow[topRow.length - 1].w = x - lastMX
-      topRow.push({ x, w: 0, label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` })
-      lastMX = x; lastMK = mk
+  if (zoom === 'year') {
+    // topRow = years, botRow = quarters
+    let lastYKey = '', lastYX = 0
+    let lastQKey = '', lastQX = 0
+    for (let i = 0; i < totalDays; i++) {
+      const d = addDays(gsDate, i)
+      const x = i * dayW
+      const yk = `${d.getFullYear()}`
+      const qk = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3)}`
+      if (yk !== lastYKey) {
+        if (topRow.length) topRow[topRow.length - 1].w = x - lastYX
+        topRow.push({ x, w: 0, label: `${d.getFullYear()}` })
+        lastYX = x; lastYKey = yk
+      }
+      if (qk !== lastQKey) {
+        if (botRow.length) botRow[botRow.length - 1].w = x - lastQX
+        botRow.push({ x, w: 0, label: `Q${Math.floor(d.getMonth() / 3) + 1}` })
+        lastQX = x; lastQKey = qk
+      }
     }
-    if (zoom === 'week') {
-      botRow.push({ x, w: dayW, label: `${WDAYS[d.getDay()]} ${d.getDate()}` })
-    } else if (zoom === 'month' && d.getDay() === 1) {
-      botRow.push({ x, w: 7 * dayW, label: `${d.getDate()} ${MONTHS[d.getMonth()]}` })
-    } else if (zoom === 'quarter' && d.getDate() === 1) {
-      if (botRow.length) botRow[botRow.length - 1].w = x - botRow[botRow.length - 1].x
-      botRow.push({ x, w: 0, label: MONTHS[d.getMonth()] })
+    if (topRow.length) topRow[topRow.length - 1].w = totalW - lastYX
+    if (botRow.length) botRow[botRow.length - 1].w = totalW - lastQX
+  } else {
+    let lastMK = '', lastMX = 0
+    for (let i = 0; i < totalDays; i++) {
+      const d = addDays(gsDate, i)
+      const x = i * dayW
+      const mk = `${d.getFullYear()}-${d.getMonth()}`
+      if (mk !== lastMK) {
+        if (topRow.length) topRow[topRow.length - 1].w = x - lastMX
+        topRow.push({ x, w: 0, label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` })
+        lastMX = x; lastMK = mk
+      }
+      if (zoom === 'week') {
+        botRow.push({ x, w: dayW, label: `${WDAYS[d.getDay()]} ${d.getDate()}` })
+      } else if (zoom === 'month' && d.getDay() === 1) {
+        botRow.push({ x, w: 7 * dayW, label: `${d.getDate()} ${MONTHS[d.getMonth()]}` })
+      } else if ((zoom === 'quarter' || zoom === 'halfyear') && d.getDate() === 1) {
+        if (botRow.length) botRow[botRow.length - 1].w = x - botRow[botRow.length - 1].x
+        botRow.push({ x, w: 0, label: MONTHS[d.getMonth()] })
+      }
     }
+    if (topRow.length) topRow[topRow.length - 1].w = totalW - lastMX
+    if ((zoom === 'quarter' || zoom === 'halfyear') && botRow.length)
+      botRow[botRow.length - 1].w = totalW - botRow[botRow.length - 1].x
   }
-  if (topRow.length) topRow[topRow.length - 1].w = totalW - lastMX
-  if (zoom === 'quarter' && botRow.length) botRow[botRow.length - 1].w = totalW - botRow[botRow.length - 1].x
+
+  // ─── Left panel resize ───────────────────────────────────────────────────────
+
+  const onDividerDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = leftW
+    const onMove = (ev: MouseEvent) => {
+      setLeftW(Math.max(120, Math.min(600, startW + ev.clientX - startX)))
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   // ─── Drag ────────────────────────────────────────────────────────────────────
 
@@ -208,6 +251,17 @@ export function GanttView() {
     })
   )
 
+  // ─── Grid line major condition ────────────────────────────────────────────────
+
+  const isMajorLine = (d: Date) => {
+    if (zoom === 'week')     return true
+    if (zoom === 'month')    return d.getDay() === 1
+    if (zoom === 'quarter')  return d.getDate() === 1
+    if (zoom === 'halfyear') return d.getDate() === 1
+    if (zoom === 'year')     return d.getDate() === 1 && [0, 3, 6, 9].includes(d.getMonth())
+    return false
+  }
+
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -233,9 +287,11 @@ export function GanttView() {
       {/* Fixed date header */}
       <div className="flex shrink-0 border-b" style={{ height: HDR_H }}>
         {/* Left corner */}
-        <div className="shrink-0 border-r bg-muted/30 flex items-end px-3 pb-1" style={{ width: LEFT_W }}>
+        <div className="shrink-0 border-r bg-muted/30 flex items-end px-3 pb-1" style={{ width: leftW }}>
           <span className="text-[11px] font-semibold text-muted-foreground">Zadanie</span>
         </div>
+        {/* Divider placeholder */}
+        <div className="w-1 shrink-0 bg-border" />
         {/* Scrolling header */}
         <div className="flex-1 overflow-hidden bg-muted/10 relative">
           <div style={{ transform: `translateX(-${hscroll}px)`, width: totalW, height: HDR_H, position: 'relative' }}>
@@ -261,7 +317,7 @@ export function GanttView() {
         {/* Left: task names */}
         <div ref={leftRef} onScroll={onLeftScroll}
           className="shrink-0 border-r overflow-y-scroll overflow-x-hidden"
-          style={{ width: LEFT_W }}>
+          style={{ width: leftW }}>
 
           {/* Milestone label row */}
           <div style={{ height: MS_H }}
@@ -297,6 +353,13 @@ export function GanttView() {
           })}
         </div>
 
+        {/* Resize divider */}
+        <div
+          onMouseDown={onDividerDown}
+          className="w-1 shrink-0 cursor-col-resize bg-border hover:bg-primary/40 transition-colors"
+          title="Przeciągnij aby zmienić szerokość"
+        />
+
         {/* Right: timeline SVG */}
         <div ref={rightRef} onScroll={onRightScroll} className="flex-1 overflow-auto">
           <div style={{ width: totalW, height: Math.max(svgH, 200) }}>
@@ -321,10 +384,7 @@ export function GanttView() {
               {/* Vertical grid lines */}
               {Array.from({ length: totalDays }, (_, i) => {
                 const d = addDays(gsDate, i)
-                const major = zoom === 'week'
-                  || (zoom === 'month'   && d.getDay() === 1)
-                  || (zoom === 'quarter' && d.getDate() === 1)
-                return major
+                return isMajorLine(d)
                   ? <line key={i} x1={i * dayW} y1={0} x2={i * dayW} y2={svgH}
                       stroke="currentColor" strokeWidth={0.3} opacity={0.2} />
                   : null
