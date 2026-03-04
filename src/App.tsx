@@ -5,6 +5,7 @@ import { Welcome } from '@/pages/Welcome'
 import { UsersView } from '@/pages/UsersView'
 import { Settings } from '@/pages/Settings'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
+import { TasksView } from '@/pages/TasksView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -41,10 +42,7 @@ export default function App() {
               path="/tasks"
               element={
                 <RequireProject>
-                  <PlaceholderPage
-                    title="Lista zadań (WBS)"
-                    description="Widok zostanie zbudowany w Etapie 2."
-                  />
+                  <TasksView />
                 </RequireProject>
               }
             />

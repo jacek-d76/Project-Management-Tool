@@ -85,9 +85,14 @@ export const useProjectStore = create<ProjectState>()(
         })),
 
       deleteTask: (id) =>
-        set((state) => ({
-          tasks: state.tasks.filter((t) => t.id !== id),
-        })),
+        set((state) => {
+          const collectIds = (taskId: string): string[] => {
+            const children = state.tasks.filter((t) => t.parentId === taskId)
+            return [taskId, ...children.flatMap((c) => collectIds(c.id))]
+          }
+          const toDelete = new Set(collectIds(id))
+          return { tasks: state.tasks.filter((t) => !toDelete.has(t.id)) }
+        }),
 
       // ─── Milestone'y ─────────────────────────────────────────────────────
       addMilestone: (data) =>
