@@ -23,6 +23,15 @@ function cellText(ratio: number): string {
   return 'text-red-800 dark:text-red-200'
 }
 
+// ─── Zoom levels ──────────────────────────────────────────────────────────────
+
+const ZOOM_LEVELS = [
+  { key: 'compact', label: 'Compact', cellW: 52,  rowH: 32 },
+  { key: 'normal',  label: 'Normal',  cellW: 76,  rowH: 44 },
+  { key: 'wide',    label: 'Wide',    cellW: 100, rowH: 52 },
+] as const
+type ZoomKey = typeof ZOOM_LEVELS[number]['key']
+
 // ─── Cell detail popup ────────────────────────────────────────────────────────
 
 function CellPopup({
@@ -107,16 +116,18 @@ const NAME_W = 168  // px — fixed width of the name column
 
 export function WorkloadView() {
   const { project, tasks, members } = useProjectStore()
-  const [popup, setPopup] = useState<{ personId: string; weekStart: string } | null>(null)
+  const [popup,   setPopup]   = useState<{ personId: string; weekStart: string } | null>(null)
+  const [zoomKey, setZoomKey] = useState<ZoomKey>('normal')
 
   if (!project) return null
 
+  const zoom   = ZOOM_LEVELS.find((z) => z.key === zoomKey)!
   const active = members.filter((m) => m.isActive)
   const weeks  = generateWeeks(project.startDate, project.endDate)
   const grid   = computeWorkload(tasks, active, weeks)
 
-  const popupMember = popup ? active.find((m) => m.id === popup.personId)         : null
-  const popupWeek   = popup ? weeks.find((w) => w.start === popup.weekStart)       : null
+  const popupMember = popup ? active.find((m) => m.id === popup.personId)          : null
+  const popupWeek   = popup ? weeks.find((w) => w.start === popup.weekStart)        : null
   const popupCell   = popup ? grid.get(popup.personId)?.get(popup.weekStart) ?? null : null
 
   return (
@@ -131,24 +142,44 @@ export function WorkloadView() {
           </span>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-sky-50 border border-sky-200" />
-            &lt;50%
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-300" />
-            50–80%
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-orange-200 border border-orange-400" />
-            80–100%
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-red-200 border border-red-400" />
-            &gt;100%
-          </span>
+        <div className="flex items-center gap-4">
+          {/* Zoom buttons */}
+          <div className="flex items-center gap-1 rounded-md border p-0.5">
+            {ZOOM_LEVELS.map((z) => (
+              <button
+                key={z.key}
+                onClick={() => setZoomKey(z.key)}
+                className={[
+                  'px-2.5 py-0.5 rounded text-xs font-medium transition-colors',
+                  zoomKey === z.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                ].join(' ')}
+              >
+                {z.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-sm bg-sky-50 border border-sky-200" />
+              &lt;50%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-300" />
+              50–80%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-sm bg-orange-200 border border-orange-400" />
+              80–100%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-sm bg-red-200 border border-red-400" />
+              &gt;100%
+            </span>
+          </div>
         </div>
       </div>
 
@@ -160,12 +191,11 @@ export function WorkloadView() {
         </div>
       ) : (
         <div className="flex-1 overflow-auto">
-          <table className="border-collapse text-sm" style={{ minWidth: NAME_W + weeks.length * 76 }}>
+          <table className="border-collapse text-sm" style={{ minWidth: NAME_W + weeks.length * zoom.cellW }}>
 
             {/* ── Header row ── */}
             <thead className="sticky top-0 z-10 bg-background">
               <tr>
-                {/* Name col header */}
                 <th
                   className="sticky left-0 z-20 bg-background border-b border-r text-left text-xs font-medium text-muted-foreground px-3 py-2"
                   style={{ width: NAME_W, minWidth: NAME_W }}
@@ -176,7 +206,7 @@ export function WorkloadView() {
                   <th
                     key={w.start}
                     className="border-b text-center text-[10px] font-medium text-muted-foreground px-1 py-2 whitespace-nowrap"
-                    style={{ minWidth: 72 }}
+                    style={{ minWidth: zoom.cellW, width: zoom.cellW }}
                   >
                     {w.label}
                   </th>
@@ -188,17 +218,19 @@ export function WorkloadView() {
             <tbody>
               {active.map((member, ri) => {
                 const row = grid.get(member.id)!
-                const rowBg = ri % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+                // Use SOLID backgrounds for sticky col to prevent bleed-through on scroll
+                const stickyBg = ri % 2 === 0 ? 'hsl(var(--background))' : 'hsl(var(--muted))'
+                const rowCls   = ri % 2 === 0 ? '' : 'bg-muted/20'
 
                 return (
-                  <tr key={member.id} className={rowBg}>
-                    {/* Name cell (sticky) */}
+                  <tr key={member.id} className={rowCls}>
+                    {/* Name cell — solid bg to block scrolled content */}
                     <td
-                      className={`sticky left-0 z-10 border-r px-3 py-2 ${rowBg}`}
-                      style={{ width: NAME_W, minWidth: NAME_W }}
+                      className="sticky left-0 z-10 border-r px-3 border-b"
+                      style={{ width: NAME_W, minWidth: NAME_W, height: zoom.rowH, background: stickyBg }}
                     >
-                      <div className="truncate font-medium text-sm">{member.name}</div>
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className="truncate font-medium text-sm leading-tight">{member.name}</div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">
                         {member.projectRole ? `${member.projectRole} · ` : ''}{member.weeklyHours}h/wk
                       </div>
                     </td>
@@ -213,17 +245,24 @@ export function WorkloadView() {
                         <td
                           key={w.start}
                           className={[
-                            'text-center px-1 py-1 border-b border-r/20 select-none',
+                            'text-center px-1 border-b border-r/20 select-none',
                             empty ? '' : `cursor-pointer hover:opacity-75 ${cellBg(ratio)}`,
                           ].join(' ')}
+                          style={{ height: zoom.rowH, width: zoom.cellW, minWidth: zoom.cellW }}
                           title={empty ? undefined : `${cell.hours}h / ${cell.capacity}h (${Math.round(ratio * 100)}%)`}
                           onClick={() => !empty && setPopup({ personId: member.id, weekStart: w.start })}
                         >
                           {empty ? (
                             <span className="text-[10px] text-muted-foreground/25">—</span>
+                          ) : zoom.key === 'compact' ? (
+                            /* Compact: hours only */
+                            <span className={`text-[10px] font-semibold ${cellText(ratio)}`}>
+                              {cell.hours}h
+                            </span>
                           ) : (
+                            /* Normal / Wide: hours + % */
                             <div>
-                              <div className={`text-[11px] font-semibold leading-tight ${cellText(ratio)}`}>
+                              <div className={`font-semibold leading-tight ${zoom.key === 'wide' ? 'text-xs' : 'text-[11px]'} ${cellText(ratio)}`}>
                                 {cell.hours}h
                               </div>
                               <div className="text-[9px] text-muted-foreground leading-tight">
