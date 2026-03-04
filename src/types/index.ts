@@ -12,14 +12,38 @@ export interface Project {
   exchangeRate: number // 1 EUR = X PLN
 }
 
-// ─── Zespół ─────────────────────────────────────────────────────────────────
+// ─── Uprawnienia użytkownika ──────────────────────────────────────────────────
 
-export interface Person {
+export interface UserPermissions {
+  canEditTasks: boolean       // Edycja zadań (dodawanie, zmiana statusu, dat, opisu)
+  canUpdateProgress: boolean  // Zmiana % postępu
+  canViewCosts: boolean       // Podgląd kosztów
+  canEditMilestones: boolean  // Edycja milestone'ów
+  canAddEvidence: boolean     // Dodawanie dowodów dostarczenia
+  canManageTeam: boolean      // Zarządzanie zespołem (PM-level)
+}
+
+export const DEFAULT_PERMISSIONS: UserPermissions = {
+  canEditTasks: false,
+  canUpdateProgress: true,
+  canViewCosts: false,
+  canEditMilestones: false,
+  canAddEvidence: true,
+  canManageTeam: false,
+}
+
+// ─── Członek zespołu (konto logowania + dane projektowe) ─────────────────────
+
+export interface TeamMember {
   id: string
   name: string
-  role: string
-  weeklyHours: number   // dostępność h/tydzień
-  hourlyRate: number    // stawka w walucie bazowej projektu
+  projectRole: string     // opisowa rola np. "Developer", "Designer"
+  weeklyHours: number     // dostępność h/tydzień
+  hourlyRate: number      // stawka w walucie bazowej projektu
+  username: string
+  password: string
+  isActive: boolean
+  permissions: UserPermissions
 }
 
 // ─── Zadania ─────────────────────────────────────────────────────────────────
@@ -84,29 +108,16 @@ export interface Milestone {
   evidence: MilestoneEvidence[]
 }
 
-// ─── Użytkownicy aplikacji ────────────────────────────────────────────────────
-
-export type AppUserRole = 'member' | 'viewer'
-
-export interface AppUser {
-  id: string
-  name: string        // wyświetlana nazwa
-  username: string    // login (unikalny)
-  password: string    // plain text (Etap 8: serwer z hashowaniem)
-  role: AppUserRole
-  personId: string | null  // powiązanie z Person w projekcie (workload, przypisania)
-  isActive: boolean
-}
-
 // ─── Sesja ───────────────────────────────────────────────────────────────────
 
-export type UserRole = 'pm' | 'member' | 'viewer' | null
+export type UserRole = 'pm' | 'member' | null
 
 export interface SessionUser {
   username: string
   name: string
   role: UserRole
-  personId: string | null  // null dla PM
+  memberId: string | null       // null dla PM
+  permissions: UserPermissions | null  // null dla PM (ma wszystko)
 }
 
 // ─── Pełny eksport JSON ──────────────────────────────────────────────────────
@@ -115,7 +126,7 @@ export interface ProjectExport {
   version: string
   exportedAt: string
   project: Project
-  persons: Person[]
+  members: TeamMember[]
   tasks: Task[]
   milestones: Milestone[]
 }

@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginScreen } from '@/components/auth/LoginScreen'
 import { Welcome } from '@/pages/Welcome'
-import { TeamView } from '@/pages/TeamView'
 import { UsersView } from '@/pages/UsersView'
 import { Settings } from '@/pages/Settings'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
@@ -92,17 +91,6 @@ export default function App() {
                 <RequirePM>
                   <UsersView />
                 </RequirePM>
-              }
-            />
-            {/* Zespół - tylko PM */}
-            <Route
-              path="/team"
-              element={
-                <RequireProject>
-                  <RequirePM>
-                    <TeamView />
-                  </RequirePM>
-                </RequireProject>
               }
             />
             {/* Ustawienia - tylko PM */}

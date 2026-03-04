@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { create } from 'zustand'
-import type { UserRole, SessionUser } from '@/types'
-import { useUserStore } from './userStore'
+import type { UserRole, SessionUser, UserPermissions } from '@/types'
+import { useProjectStore } from './projectStore'
 
 const PM_PASSWORD = import.meta.env.VITE_PM_PASSWORD || 'pm2026'
 const PM_USERNAME = 'pm'
@@ -11,7 +11,7 @@ interface SessionState {
   login: (username: string, password: string) => boolean
   logout: () => void
   isPM: () => boolean
-  isAtLeastMember: () => boolean
+  can: (permission: keyof UserPermissions) => boolean
   role: UserRole
 }
 
@@ -29,25 +29,35 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   role: loadSession()?.role ?? null,
 
   login: (username, password) => {
-    // Konto PM - specjalne, weryfikowane przez env var
+    // Konto PM - weryfikowane przez env var
     if (username.toLowerCase() === PM_USERNAME && password === PM_PASSWORD) {
-      const user: SessionUser = { username: PM_USERNAME, name: 'Project Manager', role: 'pm', personId: null }
+      const user: SessionUser = {
+        username: PM_USERNAME,
+        name: 'Project Manager',
+        role: 'pm',
+        memberId: null,
+        permissions: null,
+      }
       sessionStorage.setItem('pm-session', JSON.stringify(user))
       set({ currentUser: user, role: 'pm' })
       return true
     }
 
-    // Konta zespołu - z localStorage
-    const appUser = useUserStore.getState().findByUsername(username)
-    if (appUser && appUser.isActive && appUser.password === password) {
+    // Konta zespołu - z projectStore
+    const members = useProjectStore.getState().members
+    const member = members.find(
+      (m) => m.username.toLowerCase() === username.toLowerCase()
+    )
+    if (member && member.isActive && member.password === password) {
       const user: SessionUser = {
-        username: appUser.username,
-        name: appUser.name,
-        role: appUser.role,
-        personId: appUser.personId,
+        username: member.username,
+        name: member.name,
+        role: 'member',
+        memberId: member.id,
+        permissions: member.permissions,
       }
       sessionStorage.setItem('pm-session', JSON.stringify(user))
-      set({ currentUser: user, role: appUser.role })
+      set({ currentUser: user, role: 'member' })
       return true
     }
 
@@ -60,8 +70,11 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   },
 
   isPM: () => get().currentUser?.role === 'pm',
-  isAtLeastMember: () => {
-    const role = get().currentUser?.role
-    return role === 'pm' || role === 'member'
+
+  can: (permission) => {
+    const user = get().currentUser
+    if (!user) return false
+    if (user.role === 'pm') return true
+    return user.permissions?.[permission] ?? false
   },
 }))

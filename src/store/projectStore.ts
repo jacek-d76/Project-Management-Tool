@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Project, Person, Task, Milestone, ProjectExport } from '@/types'
+import type { Project, TeamMember, Task, Milestone, ProjectExport } from '@/types'
 import { generateId } from '@/lib/utils'
 
 interface ProjectState {
   project: Project | null
-  persons: Person[]
+  members: TeamMember[]
   tasks: Task[]
   milestones: Milestone[]
 
@@ -14,10 +14,10 @@ interface ProjectState {
   updateProject: (data: Partial<Project>) => void
   clearProject: () => void
 
-  // Zespół
-  addPerson: (person: Omit<Person, 'id'>) => void
-  updatePerson: (id: string, data: Partial<Person>) => void
-  deletePerson: (id: string) => void
+  // Zespół / Użytkownicy
+  addMember: (member: Omit<TeamMember, 'id'>) => void
+  updateMember: (id: string, data: Partial<TeamMember>) => void
+  deleteMember: (id: string) => void
 
   // Zadania (stub - rozbudowane w Etapie 2)
   addTask: (task: Omit<Task, 'id'>) => void
@@ -38,7 +38,7 @@ export const useProjectStore = create<ProjectState>()(
   persist(
     (set, get) => ({
       project: null,
-      persons: [],
+      members: [],
       tasks: [],
       milestones: [],
 
@@ -51,24 +51,24 @@ export const useProjectStore = create<ProjectState>()(
         })),
 
       clearProject: () =>
-        set({ project: null, persons: [], tasks: [], milestones: [] }),
+        set({ project: null, members: [], tasks: [], milestones: [] }),
 
-      // ─── Zespół ──────────────────────────────────────────────────────────
-      addPerson: (personData) =>
+      // ─── Zespół / Użytkownicy ─────────────────────────────────────────────
+      addMember: (memberData) =>
         set((state) => ({
-          persons: [...state.persons, { ...personData, id: generateId() }],
+          members: [...state.members, { ...memberData, id: generateId() }],
         })),
 
-      updatePerson: (id, data) =>
+      updateMember: (id, data) =>
         set((state) => ({
-          persons: state.persons.map((p) =>
-            p.id === id ? { ...p, ...data } : p
+          members: state.members.map((m) =>
+            m.id === id ? { ...m, ...data } : m
           ),
         })),
 
-      deletePerson: (id) =>
+      deleteMember: (id) =>
         set((state) => ({
-          persons: state.persons.filter((p) => p.id !== id),
+          members: state.members.filter((m) => m.id !== id),
         })),
 
       // ─── Zadania ─────────────────────────────────────────────────────────
@@ -87,8 +87,6 @@ export const useProjectStore = create<ProjectState>()(
       deleteTask: (id) =>
         set((state) => ({
           tasks: state.tasks.filter((t) => t.id !== id),
-          // usuń też podzadania
-          // tasks: state.tasks.filter((t) => t.id !== id && t.parentId !== id),
         })),
 
       // ─── Milestone'y ─────────────────────────────────────────────────────
@@ -115,10 +113,10 @@ export const useProjectStore = create<ProjectState>()(
         if (!state.project) return
 
         const exportData: ProjectExport = {
-          version: '1.0',
+          version: '1.1',
           exportedAt: new Date().toISOString(),
           project: state.project,
-          persons: state.persons,
+          members: state.members,
           tasks: state.tasks,
           milestones: state.milestones,
         }
@@ -142,7 +140,7 @@ export const useProjectStore = create<ProjectState>()(
           if (!data.project || !data.version) return false
           set({
             project: data.project,
-            persons: data.persons ?? [],
+            members: data.members ?? [],
             tasks: data.tasks ?? [],
             milestones: data.milestones ?? [],
           })
