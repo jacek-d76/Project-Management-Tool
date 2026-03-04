@@ -32,6 +32,41 @@ const statusCls   = (s: TaskStatus) => STATUS_OPTS.find((o) => o.value === s)?.c
 const priorityLabel = (p: TaskPriority) => PRIORITY_OPTS.find((o) => o.value === p)?.label ?? p
 const priorityCls   = (p: TaskPriority) => PRIORITY_OPTS.find((o) => o.value === p)?.cls ?? ''
 
+// ─── InlineAdd ────────────────────────────────────────────────────────────────
+
+function InlineAdd({
+  parentId, depth, value, inputRef, onChange, onConfirm, onCancel,
+}: {
+  parentId: string | null
+  depth: number
+  value: string
+  inputRef: React.RefObject<HTMLInputElement>
+  onChange: (v: string) => void
+  onConfirm: (parentId: string | null) => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex items-center gap-2 py-1.5" style={{ paddingLeft: `${depth * 20 + 8}px` }}>
+      <Input
+        ref={inputRef}
+        className="h-7 text-sm"
+        placeholder="Nazwa zadania... (Enter aby dodać)"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter')  onConfirm(parentId)
+          if (e.key === 'Escape') onCancel()
+        }}
+        onBlur={() => setTimeout(() => onCancel(), 150)}
+      />
+      <Button size="sm" className="h-7 px-2 shrink-0" onMouseDown={() => onConfirm(parentId)}>Dodaj</Button>
+      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onMouseDown={() => onCancel()}>
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  )
+}
+
 // ─── TasksView ────────────────────────────────────────────────────────────────
 
 export function TasksView() {
@@ -108,29 +143,6 @@ export function TasksView() {
     deleteTask(task.id)
     if (selectedId === task.id) setSelectedId(null)
   }
-
-  // ─── Inline Add ────────────────────────────────────────────────────────────
-
-  const InlineAdd = ({ parentId, depth }: { parentId: string | null; depth: number }) => (
-    <div className="flex items-center gap-2 py-1.5" style={{ paddingLeft: `${depth * 20 + 8}px` }}>
-      <Input
-        ref={addInputRef}
-        className="h-7 text-sm"
-        placeholder="Nazwa zadania... (Enter aby dodać)"
-        value={newTitle}
-        onChange={(e) => setNewTitle(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter')  confirmAdd(parentId)
-          if (e.key === 'Escape') setAddingTo(null)
-        }}
-        onBlur={() => setTimeout(() => setAddingTo(null), 150)}
-      />
-      <Button size="sm" className="h-7 px-2 shrink-0" onMouseDown={() => confirmAdd(parentId)}>Dodaj</Button>
-      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onMouseDown={() => setAddingTo(null)}>
-        <X className="h-3 w-3" />
-      </Button>
-    </div>
-  )
 
   // ─── Task Row ───────────────────────────────────────────────────────────────
 
@@ -209,7 +221,7 @@ export function TasksView() {
         {isExpanded && (
           <div>
             {children.map((child) => renderTask(child, depth + 1))}
-            {addingTo === task.id && <InlineAdd parentId={task.id} depth={depth + 1} />}
+            {addingTo === task.id && <InlineAdd parentId={task.id} depth={depth + 1} value={newTitle} inputRef={addInputRef} onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)} />}
           </div>
         )}
       </div>
@@ -271,7 +283,7 @@ export function TasksView() {
           ) : (
             <div className="space-y-0.5">
               {rootTasks.map((task) => renderTask(task, 0))}
-              {addingTo === 'root' && <InlineAdd parentId={null} depth={0} />}
+              {addingTo === 'root' && <InlineAdd parentId={null} depth={0} value={newTitle} inputRef={addInputRef} onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)} />}
             </div>
           )}
         </div>
