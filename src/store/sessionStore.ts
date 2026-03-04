@@ -1,40 +1,67 @@
 /// <reference types="vite/client" />
 import { create } from 'zustand'
-import type { UserRole } from '@/types'
+import type { UserRole, SessionUser } from '@/types'
+import { useUserStore } from './userStore'
 
-// Hasła zakodowane w buildzie - zmień przed deployem!
-// W Etapie 8 (serwer) weryfikacja przeniesie się na backend.
 const PM_PASSWORD = import.meta.env.VITE_PM_PASSWORD || 'pm2026'
-const TEAM_PASSWORD = import.meta.env.VITE_TEAM_PASSWORD || 'team2026'
+const PM_USERNAME = 'pm'
 
 interface SessionState {
-  role: UserRole
-  login: (password: string) => boolean
+  currentUser: SessionUser | null
+  login: (username: string, password: string) => boolean
   logout: () => void
   isPM: () => boolean
+  isAtLeastMember: () => boolean
+  role: UserRole
+}
+
+function loadSession(): SessionUser | null {
+  try {
+    const raw = sessionStorage.getItem('pm-session')
+    return raw ? (JSON.parse(raw) as SessionUser) : null
+  } catch {
+    return null
+  }
 }
 
 export const useSessionStore = create<SessionState>()((set, get) => ({
-  role: sessionStorage.getItem('pm-role') as UserRole ?? null,
+  currentUser: loadSession(),
+  role: loadSession()?.role ?? null,
 
-  login: (password) => {
-    if (password === PM_PASSWORD) {
-      sessionStorage.setItem('pm-role', 'pm')
-      set({ role: 'pm' })
+  login: (username, password) => {
+    // Konto PM - specjalne, weryfikowane przez env var
+    if (username.toLowerCase() === PM_USERNAME && password === PM_PASSWORD) {
+      const user: SessionUser = { username: PM_USERNAME, name: 'Project Manager', role: 'pm', personId: null }
+      sessionStorage.setItem('pm-session', JSON.stringify(user))
+      set({ currentUser: user, role: 'pm' })
       return true
     }
-    if (password === TEAM_PASSWORD) {
-      sessionStorage.setItem('pm-role', 'team')
-      set({ role: 'team' })
+
+    // Konta zespołu - z localStorage
+    const appUser = useUserStore.getState().findByUsername(username)
+    if (appUser && appUser.isActive && appUser.password === password) {
+      const user: SessionUser = {
+        username: appUser.username,
+        name: appUser.name,
+        role: appUser.role,
+        personId: appUser.personId,
+      }
+      sessionStorage.setItem('pm-session', JSON.stringify(user))
+      set({ currentUser: user, role: appUser.role })
       return true
     }
+
     return false
   },
 
   logout: () => {
-    sessionStorage.removeItem('pm-role')
-    set({ role: null })
+    sessionStorage.removeItem('pm-session')
+    set({ currentUser: null, role: null })
   },
 
-  isPM: () => get().role === 'pm',
+  isPM: () => get().currentUser?.role === 'pm',
+  isAtLeastMember: () => {
+    const role = get().currentUser?.role
+    return role === 'pm' || role === 'member'
+  },
 }))

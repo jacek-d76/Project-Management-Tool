@@ -84,9 +84,30 @@ export interface Milestone {
   evidence: MilestoneEvidence[]
 }
 
+// ─── Użytkownicy aplikacji ────────────────────────────────────────────────────
+
+export type AppUserRole = 'member' | 'viewer'
+
+export interface AppUser {
+  id: string
+  name: string        // wyświetlana nazwa
+  username: string    // login (unikalny)
+  password: string    // plain text (Etap 8: serwer z hashowaniem)
+  role: AppUserRole
+  personId: string | null  // powiązanie z Person w projekcie (workload, przypisania)
+  isActive: boolean
+}
+
 // ─── Sesja ───────────────────────────────────────────────────────────────────
 
-export type UserRole = 'pm' | 'team' | null
+export type UserRole = 'pm' | 'member' | 'viewer' | null
+
+export interface SessionUser {
+  username: string
+  name: string
+  role: UserRole
+  personId: string | null  // null dla PM
+}
 
 // ─── Pełny eksport JSON ──────────────────────────────────────────────────────
 

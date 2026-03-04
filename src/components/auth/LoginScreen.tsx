@@ -7,17 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useSessionStore } from '@/store/sessionStore'
 
 export function LoginScreen() {
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(false)
   const login = useSessionStore((s) => s.login)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const ok = login(password)
+    const ok = login(username.trim(), password)
     if (!ok) {
       setError(true)
       setPassword('')
-      setTimeout(() => setError(false), 2000)
+      setTimeout(() => setError(false), 2500)
     }
   }
 
@@ -29,10 +30,22 @@ export function LoginScreen() {
             <Lock className="h-6 w-6 text-primary" />
           </div>
           <CardTitle>Project Manager</CardTitle>
-          <CardDescription>Wpisz hasło dostępu aby kontynuować</CardDescription>
+          <CardDescription>Zaloguj się aby kontynuować</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Nazwa użytkownika</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="np. pm, anna.k ..."
+                autoFocus
+                autoComplete="username"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="password">Hasło</Label>
               <Input
@@ -41,17 +54,22 @@ export function LoginScreen() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Wpisz hasło..."
-                autoFocus
+                autoComplete="current-password"
                 className={error ? 'border-destructive' : ''}
               />
               {error && (
-                <p className="text-sm text-destructive">Nieprawidłowe hasło. Spróbuj ponownie.</p>
+                <p className="text-sm text-destructive">
+                  Nieprawidłowa nazwa użytkownika lub hasło.
+                </p>
               )}
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={!username.trim() || !password}>
               Zaloguj się
             </Button>
           </form>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Nie masz konta? Skontaktuj się z Project Managerem.
+          </p>
         </CardContent>
       </Card>
     </div>

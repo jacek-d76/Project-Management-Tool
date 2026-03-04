@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   FolderKanban,
+  UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/store/projectStore'
@@ -23,7 +24,7 @@ const navItems = [
 
 export function Sidebar() {
   const project = useProjectStore((s) => s.project)
-  const { isPM, logout } = useSessionStore()
+  const { isPM, logout, currentUser } = useSessionStore()
 
   return (
     <aside className="flex h-screen w-56 flex-col border-r bg-card">
@@ -67,6 +68,22 @@ export function Sidebar() {
       <div className="border-t p-2 space-y-1">
         {isPM() && (
           <NavLink
+            to="/users"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )
+            }
+          >
+            <UserCog className="h-4 w-4 shrink-0" />
+            Użytkownicy
+          </NavLink>
+        )}
+        {isPM() && (
+          <NavLink
             to="/team"
             className={({ isActive }) =>
               cn(
@@ -97,6 +114,12 @@ export function Sidebar() {
             <Settings className="h-4 w-4 shrink-0" />
             Ustawienia
           </NavLink>
+        )}
+        {currentUser && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-medium">{currentUser.name}</span>
+            <span className="ml-1 opacity-60">({currentUser.role})</span>
+          </div>
         )}
         <Button
           variant="ghost"

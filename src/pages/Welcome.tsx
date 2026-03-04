@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, Plus } from 'lucide-react'
+import { FolderKanban, Plus, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useSessionStore } from '@/store/sessionStore'
 import {
   Select,
   SelectContent,
@@ -19,6 +20,27 @@ import type { Currency } from '@/types'
 export function Welcome() {
   const navigate = useNavigate()
   const { setProject, importJSON } = useProjectStore()
+  const isPM = useSessionStore((s) => s.isPM())
+
+  // Team member nie może tworzyć projektu - brak projektu = komunikat
+  if (!isPM) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
+        <Card className="w-full max-w-sm text-center">
+          <CardContent className="pt-8 pb-8 space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <Lock className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold">Brak aktywnego projektu</h2>
+            <p className="text-sm text-muted-foreground">
+              Project Manager musi najpierw zainicjować projekt.
+              Skontaktuj się z PM i poproś o udostępnienie pliku projektu.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const [form, setForm] = useState({
     name: '',

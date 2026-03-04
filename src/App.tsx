@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginScreen } from '@/components/auth/LoginScreen'
 import { Welcome } from '@/pages/Welcome'
 import { TeamView } from '@/pages/TeamView'
+import { UsersView } from '@/pages/UsersView'
 import { Settings } from '@/pages/Settings'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
 import { useSessionStore } from '@/store/sessionStore'
@@ -20,12 +21,19 @@ function RequireProject({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// Strony dostępne tylko dla PM - team member dostaje przekierowanie do /tasks
+function RequirePM({ children }: { children: React.ReactNode }) {
+  const isPM = useSessionStore((s) => s.isPM())
+  if (!isPM) return <Navigate to="/tasks" replace />
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <BrowserRouter basename="/Project-Management-Tool">
       <RequireAuth>
         <Routes>
-          {/* Ekran powitalny (tworzenie/import projektu) */}
+          {/* Ekran powitalny - tworzenie/import projektu (tylko PM) */}
           <Route path="/" element={<Welcome />} />
 
           {/* Aplikacja - wymaga istniejącego projektu */}
@@ -36,7 +44,7 @@ export default function App() {
                 <RequireProject>
                   <PlaceholderPage
                     title="Lista zadań (WBS)"
-                    description="Widok zostanie zbudowany w Etapie 2. Możesz już zarządzać projektem i zespołem."
+                    description="Widok zostanie zbudowany w Etapie 2."
                   />
                 </RequireProject>
               }
@@ -63,30 +71,48 @@ export default function App() {
                 </RequireProject>
               }
             />
+            {/* Koszty - tylko PM */}
             <Route
               path="/costs"
               element={
                 <RequireProject>
-                  <PlaceholderPage
-                    title="Analiza kosztów"
-                    description="Widok kosztów i wycen zostanie zbudowany w Etapie 6."
-                  />
+                  <RequirePM>
+                    <PlaceholderPage
+                      title="Analiza kosztów"
+                      description="Widok kosztów i wycen zostanie zbudowany w Etapie 6."
+                    />
+                  </RequirePM>
                 </RequireProject>
               }
             />
+            {/* Użytkownicy - tylko PM, nie wymaga projektu */}
+            <Route
+              path="/users"
+              element={
+                <RequirePM>
+                  <UsersView />
+                </RequirePM>
+              }
+            />
+            {/* Zespół - tylko PM */}
             <Route
               path="/team"
               element={
                 <RequireProject>
-                  <TeamView />
+                  <RequirePM>
+                    <TeamView />
+                  </RequirePM>
                 </RequireProject>
               }
             />
+            {/* Ustawienia - tylko PM */}
             <Route
               path="/settings"
               element={
                 <RequireProject>
-                  <Settings />
+                  <RequirePM>
+                    <Settings />
+                  </RequirePM>
                 </RequireProject>
               }
             />
