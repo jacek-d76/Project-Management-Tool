@@ -18,7 +18,6 @@ const PERMISSIONS_CONFIG: { key: keyof UserPermissions; label: string; descripti
   { key: 'canViewCosts',      label: 'Costs',           description: 'Access to Costs tab' },
   { key: 'canEditMilestones', label: 'Milestones',      description: 'Add and edit milestones' },
   { key: 'canAddEvidence',    label: 'Evidence',        description: 'Delivery evidence for milestones' },
-  { key: 'canManageTeam',     label: 'Manage team',     description: 'Edit team member data' },
 ]
 
 const emptyForm = {

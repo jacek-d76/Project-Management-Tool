@@ -21,12 +21,11 @@ const navItems = [
   { to: '/gantt', icon: GanttChartSquare, label: 'Gantt' },
   { to: '/milestones', icon: Flag, label: 'Milestones' },
   { to: '/workload', icon: BarChart3, label: 'Workload' },
-  { to: '/costs', icon: DollarSign, label: 'Costs', pmOnly: true },
 ]
 
 export function Sidebar() {
   const project = useProjectStore((s) => s.project)
-  const { isPM, logout, currentUser } = useSessionStore()
+  const { isPM, can, logout, currentUser } = useSessionStore()
   const navigate = useNavigate()
 
   return (
@@ -44,8 +43,7 @@ export function Sidebar() {
 
       {/* Nawigacja */}
       <nav className="flex-1 space-y-1 p-2">
-        {navItems.map(({ to, icon: Icon, label, pmOnly }) => {
-          if (pmOnly && !isPM()) return null
+        {navItems.map(({ to, icon: Icon, label }) => {
           return (
             <NavLink
               key={to}
@@ -69,6 +67,22 @@ export function Sidebar() {
 
       {/* Dolna sekcja */}
       <div className="border-t p-2 space-y-1">
+        {(isPM() || can('canViewCosts')) && (
+          <NavLink
+            to="/costs"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )
+            }
+          >
+            <DollarSign className="h-4 w-4 shrink-0" />
+            Costs
+          </NavLink>
+        )}
         {isPM() && (
           <NavLink
             to="/contractors"

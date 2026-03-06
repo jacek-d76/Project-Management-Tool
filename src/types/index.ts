@@ -21,7 +21,6 @@ export interface UserPermissions {
   canViewCosts: boolean       // Podgląd kosztów
   canEditMilestones: boolean  // Edycja milestone'ów
   canAddEvidence: boolean     // Dodawanie dowodów dostarczenia
-  canManageTeam: boolean      // Zarządzanie zespołem (PM-level)
 }
 
 export const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -30,7 +29,6 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
   canViewCosts: false,
   canEditMilestones: false,
   canAddEvidence: true,
-  canManageTeam: false,
 }
 
 // ─── Kontrahent (firma zewnętrzna z kontraktem fixed-price) ──────────────────
