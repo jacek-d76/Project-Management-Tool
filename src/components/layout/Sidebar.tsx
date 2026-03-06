@@ -25,7 +25,7 @@ const navItems = [
 
 export function Sidebar() {
   const project = useProjectStore((s) => s.project)
-  const { isPM, can, logout, currentUser } = useSessionStore()
+  const { isPM, logout, currentUser } = useSessionStore()
   const navigate = useNavigate()
 
   return (
@@ -67,7 +67,7 @@ export function Sidebar() {
 
       {/* Dolna sekcja */}
       <div className="border-t p-2 space-y-1">
-        {(isPM() || can('canViewCosts')) && (
+        {isPM() && (
           <NavLink
             to="/costs"
             className={({ isActive }) =>

@@ -18,7 +18,6 @@ export interface Project {
 export interface UserPermissions {
   canEditTasks: boolean       // Edycja zadań (dodawanie, zmiana statusu, dat, opisu)
   canUpdateProgress: boolean  // Zmiana % postępu
-  canViewCosts: boolean       // Podgląd kosztów
   canEditMilestones: boolean  // Edycja milestone'ów
   canAddEvidence: boolean     // Dodawanie dowodów dostarczenia
 }
@@ -26,7 +25,6 @@ export interface UserPermissions {
 export const DEFAULT_PERMISSIONS: UserPermissions = {
   canEditTasks: false,
   canUpdateProgress: true,
-  canViewCosts: false,
   canEditMilestones: false,
   canAddEvidence: true,
 }

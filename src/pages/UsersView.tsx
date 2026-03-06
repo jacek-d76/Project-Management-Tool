@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const PERMISSIONS_CONFIG: { key: keyof UserPermissions; label: string; description: string }[] = [
   { key: 'canEditTasks',      label: 'Edit tasks',      description: 'Add, change status, dates, description of tasks' },
   { key: 'canUpdateProgress', label: 'Progress %',      description: 'Update task progress slider' },
-  { key: 'canViewCosts',      label: 'Costs',           description: 'Access to Costs tab' },
   { key: 'canEditMilestones', label: 'Milestones',      description: 'Add and edit milestones' },
   { key: 'canAddEvidence',    label: 'Evidence',        description: 'Delivery evidence for milestones' },
 ]
