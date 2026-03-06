@@ -21,7 +21,8 @@ const navItems = [
   { to: '/gantt',    icon: GanttChartSquare,label: 'Gantt',     pmOnly: false },
   { to: '/milestones',icon: Flag,           label: 'Milestones',pmOnly: false },
   { to: '/workload', icon: BarChart3,       label: 'Workload',  pmOnly: false },
-  { to: '/costs',    icon: DollarSign,      label: 'Costs',     pmOnly: true  },
+  { to: '/costs',       icon: DollarSign, label: 'Costs',       pmOnly: true  },
+  { to: '/contractors', icon: Building2,  label: 'Contractors', pmOnly: true  },
 ]
 
 export function Sidebar() {
@@ -73,22 +74,6 @@ export function Sidebar() {
 
       {/* Dolna sekcja */}
       <div className="border-t p-2 space-y-1">
-        {isPM() && (
-          <NavLink
-            to="/contractors"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )
-            }
-          >
-            <Building2 className="h-4 w-4 shrink-0" />
-            Contractors
-          </NavLink>
-        )}
         {isPM() && (
           <NavLink
             to="/users"
