@@ -8,7 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import { useProjectStore } from '@/store/projectStore'
-import type { TeamMember, UserPermissions } from '@/types'
+import type { TeamMember, UserPermissions, Currency } from '@/types'
 import { DEFAULT_PERMISSIONS } from '@/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -28,6 +28,7 @@ const emptyForm = {
   projectRole: '',
   weeklyHours: 40,
   hourlyRate: 0,
+  hourlyRateCurrency: 'EUR' as Currency,
   contractorId: '' as string | undefined,
   isActive: true,
   permissions: { ...DEFAULT_PERMISSIONS },
@@ -90,6 +91,7 @@ export function UsersView() {
       projectRole: m.projectRole,
       weeklyHours: m.weeklyHours,
       hourlyRate: m.hourlyRate,
+      hourlyRateCurrency: m.hourlyRateCurrency ?? 'EUR',
       contractorId: m.contractorId ?? '',
       isActive: m.isActive,
       permissions: { ...m.permissions },
@@ -184,7 +186,7 @@ export function UsersView() {
                         {m.projectRole && <span>{m.projectRole} · </span>}
                         <span className="font-mono">{m.username}</span>
                         <span className="mx-1">·</span>
-                        <span>{m.weeklyHours}h/wk · {m.hourlyRate} {currencyLabel}/h</span>
+                        <span>{m.weeklyHours}h/wk · {m.hourlyRate} {m.hourlyRateCurrency ?? currencyLabel}/h</span>
                         {contractor && <span className="ml-1 text-blue-600 dark:text-blue-400">(company contract)</span>}
                         {!m.isActive && <span className="ml-1 text-destructive">(inactive)</span>}
                       </div>
@@ -301,13 +303,29 @@ export function UsersView() {
                   onChange={(e) => setForm({ ...form, weeklyHours: parseInt(e.target.value) || 40 })}
                 />
               </div>
-              <div className="space-y-2 col-span-2">
-                <Label>Rate ({currencyLabel}/h)</Label>
+              <div className="space-y-2">
+                <Label>Rate (/h)</Label>
                 <Input
                   type="number" min="0" step="0.5"
                   value={form.hourlyRate}
                   onChange={(e) => setForm({ ...form, hourlyRate: parseFloat(e.target.value) || 0 })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Rate currency</Label>
+                <Select
+                  value={form.hourlyRateCurrency}
+                  onValueChange={(v) => setForm({ ...form, hourlyRateCurrency: v as Currency })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="PLN">PLN</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {contractors.length > 0 && (
                 <div className="space-y-2 col-span-2">

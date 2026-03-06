@@ -157,9 +157,10 @@ export function CostsView() {
 
   const rate            = project.exchangeRate
   const usdRate         = project.usdExchangeRate ?? 1.08
-  const tree            = computeTaskCostTree(tasks, members, TODAY)
-  const persons         = computePersonCosts(tasks, members)
-  const contractorCosts = computeContractorCosts(contractors, members, tasks, { eurToPln: rate, eurToUsd: usdRate })
+  const rates           = { eurToPln: rate, eurToUsd: usdRate }
+  const tree            = computeTaskCostTree(tasks, members, TODAY, rates)
+  const persons         = computePersonCosts(tasks, members, rates)
+  const contractorCosts = computeContractorCosts(contractors, members, tasks, rates)
   const totals          = computeTotals(tree, contractorCosts)
 
   const toggleExpand = (id: string) =>
@@ -353,7 +354,8 @@ export function CostsView() {
                       <td className="px-3 py-2 font-medium">{p.name}</td>
                       <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell">{p.projectRole || '—'}</td>
                       <td className="px-3 py-2 text-right tabular-nums">
-                        {fmt(p.hourlyRate, showPln, rate)}<span className="text-[10px] text-muted-foreground ml-0.5">{cur}/h</span>
+                        {p.hourlyRate.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                        <span className="text-[10px] text-muted-foreground ml-0.5">{p.hourlyRateCurrency}/h</span>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{p.estimatedHours}h</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground hidden md:table-cell">

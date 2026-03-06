@@ -50,7 +50,8 @@ export interface TeamMember {
   name: string
   projectRole: string     // opisowa rola np. "Developer", "Designer"
   weeklyHours: number     // dostępność h/tydzień
-  hourlyRate: number      // stawka w walucie bazowej projektu (informacyjna gdy należy do firmy)
+  hourlyRate: number         // stawka godzinowa w hourlyRateCurrency
+  hourlyRateCurrency: Currency // waluta stawki (domyślnie waluta projektu)
   contractorId?: string   // jeśli ustawione → należy do firmy, koszty pokrywa kontrakt firmy
   username: string
   password: string

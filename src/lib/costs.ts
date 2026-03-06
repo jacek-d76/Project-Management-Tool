@@ -6,7 +6,8 @@ export interface PersonCost {
   personId: string
   name: string
   projectRole: string
-  hourlyRate: number       // EUR
+  hourlyRate: number         // in hourlyRateCurrency
+  hourlyRateCurrency: Currency
   estimatedHours: number
   actualHours: number
   estimatedCost: number    // EUR
@@ -62,10 +63,17 @@ function contractorMemberIds(members: TeamMember[]): Set<string> {
   return new Set(members.filter((m) => m.contractorId).map((m) => m.id))
 }
 
+type Rates = { eurToPln: number; eurToUsd: number }
+
+function memberRateEur(m: TeamMember, rates: Rates): number {
+  return toEur(m.hourlyRate, m.hourlyRateCurrency ?? 'EUR', rates.eurToPln, rates.eurToUsd)
+}
+
 function leafCosts(
   task: Task,
   members: TeamMember[],
   excludeIds: Set<string>,
+  rates: Rates,
 ): { est: number; actual: number } {
   if (task.pricingMode === 'fixed') {
     return { est: task.fixedPrice ?? 0, actual: task.fixedPrice ?? 0 }
@@ -75,8 +83,9 @@ function leafCosts(
     if (excludeIds.has(a.personId)) continue   // pomiń — pokrywa kontrakt firmy
     const m = members.find((x) => x.id === a.personId)
     if (!m) continue
-    est    += a.estimatedHours * m.hourlyRate
-    actual += (a.actualHours ?? 0) * m.hourlyRate
+    const rateEur = memberRateEur(m, rates)
+    est    += a.estimatedHours * rateEur
+    actual += (a.actualHours ?? 0) * rateEur
   }
   return { est, actual }
 }
@@ -88,6 +97,7 @@ function buildTaskCost(
   excludeIds: Set<string>,
   today: string,
   depth: number,
+  rates: Rates,
 ): TaskCost {
   const children = allTasks
     .filter((t) => t.parentId === task.id)
@@ -100,7 +110,7 @@ function buildTaskCost(
   let progress: number
 
   if (children.length > 0) {
-    childCosts    = children.map((c) => buildTaskCost(c, allTasks, members, excludeIds, today, depth + 1))
+    childCosts    = children.map((c) => buildTaskCost(c, allTasks, members, excludeIds, today, depth + 1, rates))
     estimatedCost = childCosts.reduce((s, c) => s + c.estimatedCost, 0)
     actualCost    = childCosts.reduce((s, c) => s + c.actualCost, 0)
     earnedValue   = childCosts.reduce((s, c) => s + c.earnedValue, 0)
@@ -109,7 +119,7 @@ function buildTaskCost(
       : Math.round(childCosts.reduce((s, c) => s + c.progress, 0) / childCosts.length)
   } else {
     childCosts    = []
-    const { est, actual } = leafCosts(task, members, excludeIds)
+    const { est, actual } = leafCosts(task, members, excludeIds, rates)
     estimatedCost = est
     actualCost    = actual
     earnedValue   = est * (task.progress / 100)
@@ -145,20 +155,22 @@ export function computeTaskCostTree(
   tasks: Task[],
   members: TeamMember[],
   today: string,
+  rates: Rates,
 ): TaskCost[] {
   const excludeIds = contractorMemberIds(members)
   return tasks
     .filter((t) => !t.parentId)
     .sort((a, b) => a.position - b.position)
-    .map((t) => buildTaskCost(t, tasks, members, excludeIds, today, 0))
+    .map((t) => buildTaskCost(t, tasks, members, excludeIds, today, 0, rates))
 }
 
-export function computePersonCosts(tasks: Task[], members: TeamMember[]): PersonCost[] {
+export function computePersonCosts(tasks: Task[], members: TeamMember[], rates: Rates): PersonCost[] {
   const excludeIds = contractorMemberIds(members)
   const map = new Map<string, PersonCost>()
   for (const m of members) {
     map.set(m.id, {
-      personId: m.id, name: m.name, projectRole: m.projectRole, hourlyRate: m.hourlyRate,
+      personId: m.id, name: m.name, projectRole: m.projectRole,
+      hourlyRate: m.hourlyRate, hourlyRateCurrency: m.hourlyRateCurrency ?? 'EUR',
       estimatedHours: 0, actualHours: 0, estimatedCost: 0, actualCost: 0, earnedValue: 0,
       contractorId: m.contractorId,
     })
@@ -171,13 +183,14 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[]): Person
       const pc = map.get(a.personId)
       const m  = members.find((x) => x.id === a.personId)
       if (!pc || !m) continue
+      const rateEur = memberRateEur(m, rates)
       // Zawsze zliczamy godziny (workload), ale koszty tylko dla indywidualnych
       pc.estimatedHours += a.estimatedHours
       pc.actualHours    += a.actualHours ?? 0
       if (!excludeIds.has(a.personId)) {
-        pc.estimatedCost += a.estimatedHours * m.hourlyRate
-        pc.actualCost    += (a.actualHours ?? 0) * m.hourlyRate
-        pc.earnedValue   += a.estimatedHours * m.hourlyRate * evRatio
+        pc.estimatedCost += a.estimatedHours * rateEur
+        pc.actualCost    += (a.actualHours ?? 0) * rateEur
+        pc.earnedValue   += a.estimatedHours * rateEur * evRatio
       }
     }
   }
