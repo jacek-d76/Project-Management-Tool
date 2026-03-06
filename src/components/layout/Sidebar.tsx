@@ -34,7 +34,7 @@ export function Sidebar() {
     <aside className="flex h-screen w-56 flex-col border-r bg-card">
       {/* Logo / Nazwa projektu */}
       <div className="flex flex-col items-center border-b px-4 py-4 gap-1">
-        {project?.avatar ? (
+        {project?.avatar?.startsWith('data:') || project?.avatar?.startsWith('http') ? (
           <img src={project.avatar} alt="Project" className="h-10 w-10 rounded-xl object-cover" />
         ) : (
           <FolderKanban className="h-7 w-7 text-primary" />
