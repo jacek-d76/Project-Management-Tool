@@ -1,4 +1,4 @@
-import type { Task, TeamMember } from '@/types'
+import type { Task, TeamMember, Contractor } from '@/types'
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
@@ -12,6 +12,15 @@ export interface PersonCost {
   estimatedCost: number    // EUR
   actualCost: number       // EUR (based on actualHours)
   earnedValue: number      // EUR (estimatedCost × weighted progress)
+  contractorId?: string    // jeśli ustawione → koszty pokrywa kontrakt firmy
+}
+
+export interface ContractorCost {
+  contractorId: string
+  name: string
+  contractPrice: number    // EUR
+  description: string
+  members: string[]        // imiona przypisanych członków
 }
 
 export interface TaskCost {
@@ -29,21 +38,33 @@ export interface TaskCost {
 }
 
 export interface CostTotals {
-  budget: number           // total estimated EUR
+  budget: number           // suma zadań + kontrakty firm
   earnedValue: number      // EV EUR
   actualCost: number       // AC EUR
   remaining: number        // budget – earnedValue
   evPct: number            // EV / budget %
+  tasksBudget: number      // część z zadań (hourly indywidualni + fixed tasks)
+  contractorsBudget: number // suma kontraktów firm
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function leafCosts(task: Task, members: TeamMember[]): { est: number; actual: number } {
+/** Zwraca Set ID członków należących do firm (ich koszty godzinowe są wykluczone) */
+function contractorMemberIds(members: TeamMember[]): Set<string> {
+  return new Set(members.filter((m) => m.contractorId).map((m) => m.id))
+}
+
+function leafCosts(
+  task: Task,
+  members: TeamMember[],
+  excludeIds: Set<string>,
+): { est: number; actual: number } {
   if (task.pricingMode === 'fixed') {
     return { est: task.fixedPrice ?? 0, actual: task.fixedPrice ?? 0 }
   }
   let est = 0, actual = 0
   for (const a of task.assignments) {
+    if (excludeIds.has(a.personId)) continue   // pomiń — pokrywa kontrakt firmy
     const m = members.find((x) => x.id === a.personId)
     if (!m) continue
     est    += a.estimatedHours * m.hourlyRate
@@ -56,6 +77,7 @@ function buildTaskCost(
   task: Task,
   allTasks: Task[],
   members: TeamMember[],
+  excludeIds: Set<string>,
   today: string,
   depth: number,
 ): TaskCost {
@@ -70,17 +92,16 @@ function buildTaskCost(
   let progress: number
 
   if (children.length > 0) {
-    childCosts    = children.map((c) => buildTaskCost(c, allTasks, members, today, depth + 1))
+    childCosts    = children.map((c) => buildTaskCost(c, allTasks, members, excludeIds, today, depth + 1))
     estimatedCost = childCosts.reduce((s, c) => s + c.estimatedCost, 0)
     actualCost    = childCosts.reduce((s, c) => s + c.actualCost, 0)
     earnedValue   = childCosts.reduce((s, c) => s + c.earnedValue, 0)
-    // Weighted-average progress for display
     progress = estimatedCost > 0
       ? Math.round(earnedValue / estimatedCost * 100)
       : Math.round(childCosts.reduce((s, c) => s + c.progress, 0) / childCosts.length)
   } else {
     childCosts    = []
-    const { est, actual } = leafCosts(task, members)
+    const { est, actual } = leafCosts(task, members, excludeIds)
     estimatedCost = est
     actualCost    = actual
     earnedValue   = est * (task.progress / 100)
@@ -96,7 +117,6 @@ function buildTaskCost(
     if (e > s) timeElapsedPct = Math.min(100, Math.max(0, (n - s) / (e - s) * 100))
   }
 
-  // At risk: time > 25% elapsed but progress < 50% of elapsed time
   const isAtRisk =
     timeElapsedPct != null &&
     task.status !== 'DONE' &&
@@ -118,18 +138,21 @@ export function computeTaskCostTree(
   members: TeamMember[],
   today: string,
 ): TaskCost[] {
+  const excludeIds = contractorMemberIds(members)
   return tasks
     .filter((t) => !t.parentId)
     .sort((a, b) => a.position - b.position)
-    .map((t) => buildTaskCost(t, tasks, members, today, 0))
+    .map((t) => buildTaskCost(t, tasks, members, excludeIds, today, 0))
 }
 
 export function computePersonCosts(tasks: Task[], members: TeamMember[]): PersonCost[] {
+  const excludeIds = contractorMemberIds(members)
   const map = new Map<string, PersonCost>()
   for (const m of members) {
     map.set(m.id, {
       personId: m.id, name: m.name, projectRole: m.projectRole, hourlyRate: m.hourlyRate,
       estimatedHours: 0, actualHours: 0, estimatedCost: 0, actualCost: 0, earnedValue: 0,
+      contractorId: m.contractorId,
     })
   }
 
@@ -140,19 +163,37 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[]): Person
       const pc = map.get(a.personId)
       const m  = members.find((x) => x.id === a.personId)
       if (!pc || !m) continue
+      // Zawsze zliczamy godziny (workload), ale koszty tylko dla indywidualnych
       pc.estimatedHours += a.estimatedHours
       pc.actualHours    += a.actualHours ?? 0
-      pc.estimatedCost  += a.estimatedHours * m.hourlyRate
-      pc.actualCost     += (a.actualHours ?? 0) * m.hourlyRate
-      pc.earnedValue    += a.estimatedHours * m.hourlyRate * evRatio
+      if (!excludeIds.has(a.personId)) {
+        pc.estimatedCost += a.estimatedHours * m.hourlyRate
+        pc.actualCost    += (a.actualHours ?? 0) * m.hourlyRate
+        pc.earnedValue   += a.estimatedHours * m.hourlyRate * evRatio
+      }
     }
   }
 
-  return [...map.values()].filter((p) => p.estimatedCost > 0 || p.actualCost > 0)
+  return [...map.values()].filter((p) => p.estimatedHours > 0 || p.estimatedCost > 0)
 }
 
-export function computeTotals(tree: TaskCost[]): CostTotals {
-  const budget      = tree.reduce((s, t) => s + t.estimatedCost, 0)
+export function computeContractorCosts(
+  contractors: Contractor[],
+  members: TeamMember[],
+): ContractorCost[] {
+  return contractors.map((c) => ({
+    contractorId: c.id,
+    name: c.name,
+    contractPrice: c.contractPrice,
+    description: c.description,
+    members: members.filter((m) => m.contractorId === c.id).map((m) => m.name),
+  }))
+}
+
+export function computeTotals(tree: TaskCost[], contractors: Contractor[]): CostTotals {
+  const tasksBudget      = tree.reduce((s, t) => s + t.estimatedCost, 0)
+  const contractorsBudget = contractors.reduce((s, c) => s + c.contractPrice, 0)
+  const budget      = tasksBudget + contractorsBudget
   const earnedValue = tree.reduce((s, t) => s + t.earnedValue, 0)
   const actualCost  = tree.reduce((s, t) => s + t.actualCost, 0)
   return {
@@ -161,5 +202,7 @@ export function computeTotals(tree: TaskCost[]): CostTotals {
     actualCost,
     remaining: budget - earnedValue,
     evPct: budget > 0 ? Math.round(earnedValue / budget * 100) : 0,
+    tasksBudget,
+    contractorsBudget,
   }
 }

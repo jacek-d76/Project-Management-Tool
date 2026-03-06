@@ -9,6 +9,7 @@ import { MilestonesView } from '@/pages/MilestonesView'
 import { GanttView } from '@/pages/GanttView'
 import { WorkloadView } from '@/pages/WorkloadView'
 import { CostsView } from '@/pages/CostsView'
+import { ContractorsView } from '@/pages/ContractorsView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -82,6 +83,15 @@ export default function App() {
                     <CostsView />
                   </RequirePM>
                 </RequireProject>
+              }
+            />
+            {/* Contractors – PM only, no project required */}
+            <Route
+              path="/contractors"
+              element={
+                <RequirePM>
+                  <ContractorsView />
+                </RequirePM>
               }
             />
             {/* Users – PM only, no project required */}

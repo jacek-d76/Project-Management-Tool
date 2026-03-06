@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { AlertTriangle, ChevronRight, ChevronDown, DollarSign } from 'lucide-react'
+import { AlertTriangle, ChevronRight, ChevronDown, DollarSign, Building2 } from 'lucide-react'
 import { useProjectStore } from '@/store/projectStore'
-import { computeTaskCostTree, computePersonCosts, computeTotals } from '@/lib/costs'
+import { computeTaskCostTree, computePersonCosts, computeContractorCosts, computeTotals } from '@/lib/costs'
 import type { TaskCost } from '@/lib/costs'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -146,18 +146,20 @@ function PhaseRow({
 const TODAY = new Date().toISOString().slice(0, 10)
 
 export function CostsView() {
-  const { project, tasks, members } = useProjectStore()
-  const [showPln,       setShowPln]       = useState(false)
-  const [expanded,      setExpanded]      = useState<Set<string>>(new Set())
-  const [showPersons,   setShowPersons]   = useState(false)
-  const [showPhases,    setShowPhases]    = useState(false)
+  const { project, tasks, members, contractors } = useProjectStore()
+  const [showPln,         setShowPln]         = useState(false)
+  const [expanded,        setExpanded]        = useState<Set<string>>(new Set())
+  const [showPersons,     setShowPersons]     = useState(false)
+  const [showPhases,      setShowPhases]      = useState(false)
+  const [showContractors, setShowContractors] = useState(false)
 
   if (!project) return null
 
-  const tree    = computeTaskCostTree(tasks, members, TODAY)
-  const persons = computePersonCosts(tasks, members)
-  const totals  = computeTotals(tree)
-  const rate    = project.exchangeRate
+  const tree            = computeTaskCostTree(tasks, members, TODAY)
+  const persons         = computePersonCosts(tasks, members)
+  const contractorCosts = computeContractorCosts(contractors, members)
+  const totals          = computeTotals(tree, contractors)
+  const rate            = project.exchangeRate
 
   const toggleExpand = (id: string) =>
     setExpanded((prev) => {
@@ -167,6 +169,9 @@ export function CostsView() {
     })
 
   const cur = showPln ? 'PLN' : 'EUR'
+
+  // Tylko osoby bez firmy (indywidualnie rozliczane)
+  const individualPersons = persons.filter((p) => !p.contractorId)
 
   return (
     <div className="flex flex-col h-full overflow-auto">
@@ -203,8 +208,8 @@ export function CostsView() {
           <StatCard
             label="Total budget"
             value={fmt(totals.budget, showPln, rate)}
-            sub={cur}
-            desc="Sum of all estimated costs: hourly (est. hours × rate) + fixed-price tasks."
+            sub={`${cur}${totals.contractorsBudget > 0 ? ` (zadania + kontrakty)` : ''}`}
+            desc="Suma kosztów zadań (godziny indywidualne + fixed price) oraz kontraktów firm."
           />
           <StatCard
             label="Earned value"
@@ -228,8 +233,77 @@ export function CostsView() {
           />
         </div>
 
-        {/* ── By person ── */}
-        {persons.length > 0 && (
+        {/* ── Contractor contracts ── */}
+        {contractorCosts.length > 0 && (
+          <section>
+            <button
+              className="flex items-center gap-2 w-full text-left mb-3 group"
+              onClick={() => setShowContractors((v) => !v)}
+            >
+              {showContractors
+                ? <ChevronDown  className="h-4 w-4 text-muted-foreground" />
+                : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">Kontrakty firm</h2>
+              <span className="text-xs text-muted-foreground">
+                {contractorCosts.length} firma/firm ·{' '}
+                <span className="font-medium text-foreground">
+                  {fmt(totals.contractorsBudget, showPln, rate)} {cur}
+                </span>
+              </span>
+            </button>
+            {showContractors && (
+              <div className="rounded-xl border overflow-hidden">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-muted/30 text-xs text-muted-foreground border-b">
+                      <th className="text-left px-3 py-2 font-medium">Firma</th>
+                      <th className="text-left px-3 py-2 font-medium hidden sm:table-cell">Zakres / notatki</th>
+                      <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Członkowie</th>
+                      <th className="text-right px-3 py-2 font-medium">Kontrakt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contractorCosts.map((c, i) => (
+                      <tr key={c.contractorId} className={`border-b last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                        <td className="px-3 py-2 font-medium">{c.name}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs hidden sm:table-cell">
+                          {c.description || '—'}
+                        </td>
+                        <td className="px-3 py-2 hidden md:table-cell">
+                          <div className="flex flex-wrap gap-1">
+                            {c.members.length > 0
+                              ? c.members.map((name) => (
+                                  <span key={name} className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                    {name}
+                                  </span>
+                                ))
+                              : <span className="text-xs text-muted-foreground">—</span>
+                            }
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold text-primary">
+                          {fmt(c.contractPrice, showPln, rate)} {cur}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/20 border-t font-semibold text-sm">
+                      <td className="px-3 py-2" colSpan={3}>Łącznie kontrakty</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-primary">
+                        {fmt(totals.contractorsBudget, showPln, rate)} {cur}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── By person (indywidualni) ── */}
+        {individualPersons.length > 0 && (
           <section>
             <button
               className="flex items-center gap-2 w-full text-left mb-3 group"
@@ -239,7 +313,9 @@ export function CostsView() {
                 ? <ChevronDown  className="h-4 w-4 text-muted-foreground" />
                 : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
               <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">By person</h2>
-              <span className="text-xs text-muted-foreground">{persons.length} member{persons.length !== 1 ? 's' : ''}</span>
+              <span className="text-xs text-muted-foreground">
+                {individualPersons.length} member{individualPersons.length !== 1 ? 's' : ''} (indywidualni)
+              </span>
             </button>
             {showPersons && <div className="rounded-xl border overflow-hidden">
               <table className="w-full text-sm border-collapse">
@@ -256,7 +332,7 @@ export function CostsView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {persons.map((p, i) => (
+                  {individualPersons.map((p, i) => (
                     <tr key={p.personId} className={`border-b last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
                       <td className="px-3 py-2 font-medium">{p.name}</td>
                       <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell">{p.projectRole || '—'}</td>
@@ -279,19 +355,18 @@ export function CostsView() {
                     </tr>
                   ))}
                 </tbody>
-                {/* Totals row */}
                 <tfoot>
                   <tr className="bg-muted/20 border-t font-semibold text-sm">
                     <td className="px-3 py-2" colSpan={3}>Total (hourly tasks)</td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {persons.reduce((s, p) => s + p.estimatedHours, 0)}h
+                      {individualPersons.reduce((s, p) => s + p.estimatedHours, 0)}h
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell" />
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {fmt(persons.reduce((s, p) => s + p.estimatedCost, 0), showPln, rate)}
+                      {fmt(individualPersons.reduce((s, p) => s + p.estimatedCost, 0), showPln, rate)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                      {fmt(persons.reduce((s, p) => s + p.earnedValue, 0), showPln, rate)}
+                      {fmt(individualPersons.reduce((s, p) => s + p.earnedValue, 0), showPln, rate)}
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell" />
                   </tr>
@@ -342,8 +417,8 @@ export function CostsView() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-muted/20 border-t font-semibold text-sm">
-                        <td className="px-3 py-2" colSpan={3}>Total</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.budget, showPln, rate)}</td>
+                        <td className="px-3 py-2" colSpan={3}>Total (zadania)</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.tasksBudget, showPln, rate)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{fmt(totals.earnedValue, showPln, rate)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                           {totals.actualCost > 0 ? fmt(totals.actualCost, showPln, rate) : '—'}
@@ -352,7 +427,6 @@ export function CostsView() {
                     </tfoot>
                   </table>
                 </div>
-                {/* At-risk legend */}
                 {tree.some((t) => t.isAtRisk || t.children.some((c) => c.isAtRisk)) && (
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3 text-orange-500" />
@@ -365,7 +439,7 @@ export function CostsView() {
         )}
 
         {/* Empty state */}
-        {tree.length === 0 && (
+        {tree.length === 0 && contractors.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
             <DollarSign className="h-12 w-12 opacity-20" />
             <p className="text-sm">No tasks with cost data yet.</p>

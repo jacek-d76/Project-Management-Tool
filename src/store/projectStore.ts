@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Project, TeamMember, Task, Milestone, ProjectExport } from '@/types'
+import type { Project, TeamMember, Task, Milestone, Contractor, ProjectExport } from '@/types'
 import { generateId } from '@/lib/utils'
 import { runScheduler } from '@/lib/scheduler'
 
@@ -9,6 +9,7 @@ interface ProjectState {
   members: TeamMember[]
   tasks: Task[]
   milestones: Milestone[]
+  contractors: Contractor[]
 
   // Projekt
   setProject: (project: Project) => void
@@ -20,7 +21,12 @@ interface ProjectState {
   updateMember: (id: string, data: Partial<TeamMember>) => void
   deleteMember: (id: string) => void
 
-  // Zadania (stub - rozbudowane w Etapie 2)
+  // Kontrahenci (firmy)
+  addContractor: (contractor: Omit<Contractor, 'id'>) => void
+  updateContractor: (id: string, data: Partial<Contractor>) => void
+  deleteContractor: (id: string) => void
+
+  // Zadania
   addTask: (task: Omit<Task, 'id'>) => void
   updateTask: (id: string, data: Partial<Task>) => void
   deleteTask: (id: string) => void
@@ -28,7 +34,7 @@ interface ProjectState {
   setTaskDates: (id: string, startDate: string | null, endDate: string | null) => void
   addTaskDependency: (taskId: string, dep: Task['dependencies'][number]) => void
 
-  // Milestone'y (stub - rozbudowane w Etapie 3)
+  // Milestone'y
   addMilestone: (milestone: Omit<Milestone, 'id'>) => void
   updateMilestone: (id: string, data: Partial<Milestone>) => void
   deleteMilestone: (id: string) => void
@@ -45,6 +51,7 @@ export const useProjectStore = create<ProjectState>()(
       members: [],
       tasks: [],
       milestones: [],
+      contractors: [],
 
       // ─── Projekt ─────────────────────────────────────────────────────────
       setProject: (project) => set({ project }),
@@ -55,7 +62,7 @@ export const useProjectStore = create<ProjectState>()(
         })),
 
       clearProject: () =>
-        set({ project: null, members: [], tasks: [], milestones: [] }),
+        set({ project: null, members: [], tasks: [], milestones: [], contractors: [] }),
 
       // ─── Zespół / Użytkownicy ─────────────────────────────────────────────
       addMember: (memberData) =>
@@ -73,6 +80,27 @@ export const useProjectStore = create<ProjectState>()(
       deleteMember: (id) =>
         set((state) => ({
           members: state.members.filter((m) => m.id !== id),
+        })),
+
+      // ─── Kontrahenci ──────────────────────────────────────────────────────
+      addContractor: (data) =>
+        set((state) => ({
+          contractors: [...state.contractors, { ...data, id: generateId() }],
+        })),
+
+      updateContractor: (id, data) =>
+        set((state) => ({
+          contractors: state.contractors.map((c) =>
+            c.id === id ? { ...c, ...data } : c
+          ),
+        })),
+
+      deleteContractor: (id) =>
+        set((state) => ({
+          contractors: state.contractors.filter((c) => c.id !== id),
+          members: state.members.map((m) =>
+            m.contractorId === id ? { ...m, contractorId: undefined } : m
+          ),
         })),
 
       // ─── Zadania ─────────────────────────────────────────────────────────
@@ -115,7 +143,6 @@ export const useProjectStore = create<ProjectState>()(
 
       addTaskDependency: (taskId, dep) =>
         set((state) => {
-          // Add dependency atomically, then run scheduler from the predecessor
           const withDep = state.tasks.map((t) =>
             t.id === taskId ? { ...t, dependencies: [...t.dependencies, dep] } : t
           )
@@ -136,21 +163,17 @@ export const useProjectStore = create<ProjectState>()(
           if (!dragged) return {}
           const oldParentId = dragged.parentId
 
-          // Siblings at new parent (excluding dragged task)
           const newSiblings = state.tasks
             .filter((t) => t.parentId === newParentId && t.id !== taskId)
             .sort((a, b) => a.position - b.position)
 
-          // Insert dragged at target position
           newSiblings.splice(newPosition, 0, dragged)
 
-          // Build position updates for new parent group
           const updates: Record<string, { parentId: string | null; position: number }> = {}
           newSiblings.forEach((t, i) => {
             updates[t.id] = { parentId: newParentId, position: i }
           })
 
-          // Re-number old parent's siblings if parent changed
           if (oldParentId !== newParentId) {
             state.tasks
               .filter((t) => t.parentId === oldParentId && t.id !== taskId)
@@ -192,12 +215,13 @@ export const useProjectStore = create<ProjectState>()(
         if (!state.project) return
 
         const exportData: ProjectExport = {
-          version: '1.1',
+          version: '1.2',
           exportedAt: new Date().toISOString(),
           project: state.project,
           members: state.members,
           tasks: state.tasks,
           milestones: state.milestones,
+          contractors: state.contractors,
         }
 
         const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -222,6 +246,7 @@ export const useProjectStore = create<ProjectState>()(
             members: data.members ?? [],
             tasks: data.tasks ?? [],
             milestones: data.milestones ?? [],
+            contractors: data.contractors ?? [],
           })
           return true
         } catch {
@@ -231,15 +256,13 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'project-manager-storage',
-      version: 3,
+      version: 4,
       migrate: (persistedState, version) => {
         const s = persistedState as Record<string, unknown>
-        // v1 → v2: persons (Person[]) renamed to members (TeamMember[])
         if (version < 2 && Array.isArray(s.persons)) {
           s.members = s.members ?? []
           delete s.persons
         }
-        // v2 → v3: task.estimatedHours removed, assignments get estimatedHours + actualHours
         if (version < 3 && Array.isArray(s.tasks)) {
           s.tasks = (s.tasks as Record<string, unknown>[]).map((t) => {
             const assignments = ((t.assignments as Record<string, unknown>[]) ?? []).map((a) => ({
@@ -251,6 +274,10 @@ export const useProjectStore = create<ProjectState>()(
             void _drop
             return { ...rest, assignments }
           })
+        }
+        // v3 → v4: dodano contractors
+        if (version < 4) {
+          s.contractors = s.contractors ?? []
         }
         return s
       },

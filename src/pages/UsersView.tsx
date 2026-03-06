@@ -10,6 +10,7 @@ import {
 import { useProjectStore } from '@/store/projectStore'
 import type { TeamMember, UserPermissions } from '@/types'
 import { DEFAULT_PERMISSIONS } from '@/types'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const PERMISSIONS_CONFIG: { key: keyof UserPermissions; label: string; description: string }[] = [
   { key: 'canEditTasks',      label: 'Edit tasks',      description: 'Add, change status, dates, description of tasks' },
@@ -27,12 +28,13 @@ const emptyForm = {
   projectRole: '',
   weeklyHours: 40,
   hourlyRate: 0,
+  contractorId: '' as string | undefined,
   isActive: true,
   permissions: { ...DEFAULT_PERMISSIONS },
 }
 
 export function UsersView() {
-  const { members, addMember, updateMember, deleteMember, project } = useProjectStore()
+  const { members, addMember, updateMember, deleteMember, project, contractors } = useProjectStore()
 
   const [dirtyPerms, setDirtyPerms] = useState<Record<string, UserPermissions>>({})
 
@@ -88,6 +90,7 @@ export function UsersView() {
       projectRole: m.projectRole,
       weeklyHours: m.weeklyHours,
       hourlyRate: m.hourlyRate,
+      contractorId: m.contractorId ?? '',
       isActive: m.isActive,
       permissions: { ...m.permissions },
     })
@@ -104,10 +107,14 @@ export function UsersView() {
       setUsernameError('This username is already taken.')
       return
     }
+    const memberData = {
+      ...form,
+      contractorId: form.contractorId || undefined,
+    }
     if (editId) {
-      updateMember(editId, form)
+      updateMember(editId, memberData)
     } else {
-      addMember(form)
+      addMember(memberData)
     }
     setOpen(false)
   }
@@ -158,18 +165,27 @@ export function UsersView() {
           {members.map((m) => {
             const perms = getPerms(m)
             const isDirty = !!dirtyPerms[m.id]
+            const contractor = m.contractorId ? contractors.find((c) => c.id === m.contractorId) : null
             return (
               <Card key={m.id} className={!m.isActive ? 'opacity-50' : isDirty ? 'border-primary/50' : ''}>
                 <CardContent className="py-3 space-y-3">
                   {/* Row 1: user data */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-medium">{m.name}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{m.name}</span>
+                        {contractor && (
+                          <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                            {contractor.name}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {m.projectRole && <span>{m.projectRole} · </span>}
                         <span className="font-mono">{m.username}</span>
                         <span className="mx-1">·</span>
                         <span>{m.weeklyHours}h/wk · {m.hourlyRate} {currencyLabel}/h</span>
+                        {contractor && <span className="ml-1 text-blue-600 dark:text-blue-400">(kontrakt firmy)</span>}
                         {!m.isActive && <span className="ml-1 text-destructive">(inactive)</span>}
                       </div>
                     </div>
@@ -293,6 +309,30 @@ export function UsersView() {
                   onChange={(e) => setForm({ ...form, hourlyRate: parseFloat(e.target.value) || 0 })}
                 />
               </div>
+              {contractors.length > 0 && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Firma kontrahent</Label>
+                  <Select
+                    value={form.contractorId ?? ''}
+                    onValueChange={(v) => setForm({ ...form, contractorId: v === '__none__' ? '' : v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Brak (rozliczenie indywidualne)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Brak (rozliczenie indywidualne)</SelectItem>
+                      {contractors.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.contractorId && (
+                    <p className="text-xs text-muted-foreground">
+                      Koszty godzinowe tej osoby nie będą sumowane — pokrywa je kontrakt firmy.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <input

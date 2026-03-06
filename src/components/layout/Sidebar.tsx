@@ -9,6 +9,7 @@ import {
   FolderKanban,
   UserCog,
   Flag,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/store/projectStore'
@@ -68,6 +69,22 @@ export function Sidebar() {
 
       {/* Dolna sekcja */}
       <div className="border-t p-2 space-y-1">
+        {isPM() && (
+          <NavLink
+            to="/contractors"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )
+            }
+          >
+            <Building2 className="h-4 w-4 shrink-0" />
+            Contractors
+          </NavLink>
+        )}
         {isPM() && (
           <NavLink
             to="/users"

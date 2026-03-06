@@ -32,6 +32,15 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
   canManageTeam: false,
 }
 
+// ─── Kontrahent (firma zewnętrzna z kontraktem fixed-price) ──────────────────
+
+export interface Contractor {
+  id: string
+  name: string
+  contractPrice: number   // kwota kontraktu w walucie bazowej projektu
+  description: string     // zakres prac / notatki
+}
+
 // ─── Członek zespołu (konto logowania + dane projektowe) ─────────────────────
 
 export interface TeamMember {
@@ -39,7 +48,8 @@ export interface TeamMember {
   name: string
   projectRole: string     // opisowa rola np. "Developer", "Designer"
   weeklyHours: number     // dostępność h/tydzień
-  hourlyRate: number      // stawka w walucie bazowej projektu
+  hourlyRate: number      // stawka w walucie bazowej projektu (informacyjna gdy należy do firmy)
+  contractorId?: string   // jeśli ustawione → należy do firmy, koszty pokrywa kontrakt firmy
   username: string
   password: string
   isActive: boolean
@@ -129,4 +139,5 @@ export interface ProjectExport {
   members: TeamMember[]
   tasks: Task[]
   milestones: Milestone[]
+  contractors: Contractor[]
 }
