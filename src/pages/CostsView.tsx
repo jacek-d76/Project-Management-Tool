@@ -417,7 +417,7 @@ export function CostsView() {
                 ? <ChevronDown  className="h-4 w-4 text-muted-foreground" />
                 : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
               <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">By phase / task</h2>
-              <span className="text-xs text-muted-foreground">{tree.length} top-level task{tree.length !== 1 ? 's' : ''} · click ▶ in table to expand subtasks</span>
+              <span className="text-xs text-muted-foreground">{tree.length} top-level task{tree.length !== 1 ? 's' : ''}</span>
             </button>
             {showPhases && (
               <>
