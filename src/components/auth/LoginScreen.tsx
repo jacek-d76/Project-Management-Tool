@@ -42,7 +42,7 @@ export function LoginScreen() {
           <CardHeader className="text-center space-y-2">
             <div className="flex justify-center">
               {project?.avatar?.startsWith('data:') || project?.avatar?.startsWith('http') ? (
-                <img src={project.avatar} alt="Project" className="h-24 w-64 rounded-xl object-contain shadow-sm" />
+                <img src={project.avatar} alt="Project" className="max-w-full max-h-28 object-contain rounded-xl shadow-sm" />
               ) : null}
             </div>
             <CardTitle className="text-xl">
