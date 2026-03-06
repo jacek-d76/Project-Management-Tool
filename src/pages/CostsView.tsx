@@ -6,8 +6,12 @@ import type { TaskCost } from '@/lib/costs'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(eur: number, showPln: boolean, rate: number): string {
-  const val = showPln ? eur * rate : eur
+type DisplayCur = 'EUR' | 'PLN' | 'USD'
+
+function fmt(eur: number, cur: DisplayCur, eurToPln: number, eurToUsd: number): string {
+  const val = cur === 'PLN' ? eur * eurToPln
+            : cur === 'USD' ? eur * eurToUsd
+            : eur
   return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
@@ -35,11 +39,12 @@ function StatCard({
 // ─── Phase tree row ───────────────────────────────────────────────────────────
 
 function PhaseRow({
-  node, showPln, rate, expanded, onToggle,
+  node, cur, eurToPln, eurToUsd, expanded, onToggle,
 }: {
   node: TaskCost
-  showPln: boolean
-  rate: number
+  cur: DisplayCur
+  eurToPln: number
+  eurToUsd: number
   expanded: Set<string>
   onToggle: (id: string) => void
 }) {
@@ -112,17 +117,17 @@ function PhaseRow({
 
         {/* Budget */}
         <td className="px-3 py-2 text-right tabular-nums text-sm">
-          {node.estimatedCost > 0 ? fmt(node.estimatedCost, showPln, rate) : '—'}
+          {node.estimatedCost > 0 ? fmt(node.estimatedCost, cur, eurToPln, eurToUsd) : '—'}
         </td>
 
         {/* Earned value */}
         <td className="px-3 py-2 text-right tabular-nums text-sm text-green-700 dark:text-green-400">
-          {node.earnedValue > 0 ? fmt(node.earnedValue, showPln, rate) : '—'}
+          {node.earnedValue > 0 ? fmt(node.earnedValue, cur, eurToPln, eurToUsd) : '—'}
         </td>
 
         {/* Actual */}
         <td className="px-3 py-2 text-right tabular-nums text-sm text-muted-foreground">
-          {node.actualCost > 0 ? fmt(node.actualCost, showPln, rate) : '—'}
+          {node.actualCost > 0 ? fmt(node.actualCost, cur, eurToPln, eurToUsd) : '—'}
         </td>
       </tr>
 
@@ -131,8 +136,9 @@ function PhaseRow({
         <PhaseRow
           key={child.taskId}
           node={child}
-          showPln={showPln}
-          rate={rate}
+          cur={cur}
+          eurToPln={eurToPln}
+          eurToUsd={eurToUsd}
           expanded={expanded}
           onToggle={onToggle}
         />
@@ -147,7 +153,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 
 export function CostsView() {
   const { project, tasks, members, contractors } = useProjectStore()
-  const [showPln,         setShowPln]         = useState(false)
+  const [displayCur,      setDisplayCur]      = useState<DisplayCur>('EUR')
   const [expanded,        setExpanded]        = useState<Set<string>>(new Set())
   const [showPersons,     setShowPersons]     = useState(false)
   const [showPhases,      setShowPhases]      = useState(false)
@@ -155,9 +161,9 @@ export function CostsView() {
 
   if (!project) return null
 
-  const rate            = project.exchangeRate
-  const usdRate         = project.usdExchangeRate ?? 1.08
-  const rates           = { eurToPln: rate, eurToUsd: usdRate }
+  const eurToPln        = project.exchangeRate
+  const eurToUsd        = project.usdExchangeRate ?? 1.08
+  const rates           = { eurToPln, eurToUsd }
   const tree            = computeTaskCostTree(tasks, members, TODAY, rates)
   const persons         = computePersonCosts(tasks, members, rates)
   const contractorCosts = computeContractorCosts(contractors, members, tasks, rates)
@@ -170,7 +176,7 @@ export function CostsView() {
       return next
     })
 
-  const cur = showPln ? 'PLN' : 'EUR'
+  const cur = displayCur
 
   // Only members without a company (individually billed)
   const individualPersons = persons.filter((p) => !p.contractorId)
@@ -188,13 +194,13 @@ export function CostsView() {
           </div>
           {/* Currency toggle */}
           <div className="flex items-center gap-1 rounded-md border p-0.5">
-            {(['EUR', 'PLN'] as const).map((c) => (
+            {(['EUR', 'PLN', 'USD'] as const).map((c) => (
               <button
                 key={c}
-                onClick={() => setShowPln(c === 'PLN')}
+                onClick={() => setDisplayCur(c)}
                 className={[
                   'px-3 py-0.5 rounded text-xs font-semibold transition-colors',
-                  (c === 'PLN') === showPln
+                  c === displayCur
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent',
                 ].join(' ')}
@@ -209,27 +215,27 @@ export function CostsView() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
             label="Total budget"
-            value={fmt(totals.budget, showPln, rate)}
+            value={fmt(totals.budget, cur, eurToPln, eurToUsd)}
             sub={`${cur}${totals.contractorsBudget > 0 ? ` (tasks + contracts)` : ''}`}
             desc="Sum of task costs (individual hourly + fixed price) and company contracts."
           />
           <StatCard
             label="Earned value"
-            value={fmt(totals.earnedValue, showPln, rate)}
+            value={fmt(totals.earnedValue, cur, eurToPln, eurToUsd)}
             sub={`${totals.evPct}% of budget · ${cur}`}
             desc="Budget × progress %. Shows how much work has been completed in monetary terms."
             color="text-green-600 dark:text-green-400"
           />
           <StatCard
             label="Actual cost"
-            value={totals.actualCost > 0 ? fmt(totals.actualCost, showPln, rate) : '—'}
+            value={totals.actualCost > 0 ? fmt(totals.actualCost, cur, eurToPln, eurToUsd) : '—'}
             sub={totals.actualCost > 0 ? cur : 'No actual hours logged'}
             desc="Real cost based on actual hours logged × hourly rate. If AC > EV, the project is over budget."
             color={totals.actualCost > totals.earnedValue ? 'text-red-600' : undefined}
           />
           <StatCard
             label="Remaining"
-            value={fmt(totals.remaining, showPln, rate)}
+            value={fmt(totals.remaining, cur, eurToPln, eurToUsd)}
             sub={`${100 - totals.evPct}% of budget · ${cur}`}
             desc="Budget − Earned value. Estimated cost of work still to be done."
           />
@@ -250,7 +256,7 @@ export function CostsView() {
               <span className="text-xs text-muted-foreground">
                 {contractorCosts.length} {contractorCosts.length === 1 ? 'company' : 'companies'} ·{' '}
                 <span className="font-medium text-foreground">
-                  {fmt(totals.contractorsBudget, showPln, rate)} {cur}
+                  {fmt(totals.contractorsBudget, cur, eurToPln, eurToUsd)} {cur}
                 </span>
               </span>
             </button>
@@ -269,18 +275,18 @@ export function CostsView() {
                     {contractorCosts.map((c, i) => (
                       <tr key={c.contractorId} className={`border-b last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
                         <td className="px-3 py-2 font-medium">{c.name}</td>
-                        <td className="px-3 py-2 text-muted-foreground text-xs hidden sm:table-cell">
+                        <td className="px-3 py-2 text-muted-foreground text-xs hidden sm:table-cell whitespace-pre-line">
                           {c.description || '—'}
                         </td>
                         <td className="px-3 py-2 hidden md:table-cell">
                           <div className="flex flex-col gap-1">
                             {c.members.length > 0
                               ? c.members.map((m) => (
-                                  <div key={m.name} className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                  <div key={m.name} className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full shrink-0">
                                       {m.name}
                                     </span>
-                                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                                    <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
                                       {m.estimatedHours}h est.
                                       {m.actualHours > 0 && (
                                         <> · <span className={m.actualHours > m.estimatedHours ? 'text-orange-500' : 'text-green-600 dark:text-green-400'}>{m.actualHours}h act.</span></>
@@ -298,7 +304,7 @@ export function CostsView() {
                           </span>
                           {c.contractCurrency !== 'EUR' && (
                             <span className="block text-[11px] text-muted-foreground">
-                              ≈ {fmt(c.contractPriceEur, showPln, rate)} {cur}
+                              ≈ {fmt(c.contractPriceEur, cur, eurToPln, eurToUsd)} {cur}
                             </span>
                           )}
                         </td>
@@ -309,7 +315,7 @@ export function CostsView() {
                     <tr className="bg-muted/20 border-t font-semibold text-sm">
                       <td className="px-3 py-2" colSpan={3}>Total contracts</td>
                       <td className="px-3 py-2 text-right tabular-nums text-primary">
-                        {fmt(totals.contractorsBudget, showPln, rate)} {cur}
+                        {fmt(totals.contractorsBudget, cur, eurToPln, eurToUsd)} {cur}
                       </td>
                     </tr>
                   </tfoot>
@@ -362,13 +368,13 @@ export function CostsView() {
                         {p.actualHours > 0 ? `${p.actualHours}h` : '—'}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums font-medium">
-                        {fmt(p.estimatedCost, showPln, rate)}
+                        {fmt(p.estimatedCost, cur, eurToPln, eurToUsd)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                        {fmt(p.earnedValue, showPln, rate)}
+                        {fmt(p.earnedValue, cur, eurToPln, eurToUsd)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground hidden md:table-cell">
-                        {p.actualCost > 0 ? fmt(p.actualCost, showPln, rate) : '—'}
+                        {p.actualCost > 0 ? fmt(p.actualCost, cur, eurToPln, eurToUsd) : '—'}
                       </td>
                     </tr>
                   ))}
@@ -381,10 +387,10 @@ export function CostsView() {
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell" />
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {fmt(individualPersons.reduce((s, p) => s + p.estimatedCost, 0), showPln, rate)}
+                      {fmt(individualPersons.reduce((s, p) => s + p.estimatedCost, 0), cur, eurToPln, eurToUsd)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                      {fmt(individualPersons.reduce((s, p) => s + p.earnedValue, 0), showPln, rate)}
+                      {fmt(individualPersons.reduce((s, p) => s + p.earnedValue, 0), cur, eurToPln, eurToUsd)}
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell" />
                   </tr>
@@ -426,8 +432,9 @@ export function CostsView() {
                         <PhaseRow
                           key={node.taskId}
                           node={node}
-                          showPln={showPln}
-                          rate={rate}
+                          cur={cur}
+                          eurToPln={eurToPln}
+                          eurToUsd={eurToUsd}
                           expanded={expanded}
                           onToggle={toggleExpand}
                         />
@@ -436,10 +443,10 @@ export function CostsView() {
                     <tfoot>
                       <tr className="bg-muted/20 border-t font-semibold text-sm">
                         <td className="px-3 py-2" colSpan={3}>Total (tasks)</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.tasksBudget, showPln, rate)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{fmt(totals.earnedValue, showPln, rate)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.tasksBudget, cur, eurToPln, eurToUsd)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{fmt(totals.earnedValue, cur, eurToPln, eurToUsd)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                          {totals.actualCost > 0 ? fmt(totals.actualCost, showPln, rate) : '—'}
+                          {totals.actualCost > 0 ? fmt(totals.actualCost, cur, eurToPln, eurToUsd) : '—'}
                         </td>
                       </tr>
                     </tfoot>
