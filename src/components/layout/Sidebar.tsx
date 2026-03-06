@@ -35,7 +35,7 @@ export function Sidebar() {
       {/* Logo / Nazwa projektu */}
       <div className="flex flex-col items-center border-b px-4 py-4 gap-1">
         {project?.avatar?.startsWith('data:') || project?.avatar?.startsWith('http') ? (
-          <img src={project.avatar} alt="Project" className="h-10 w-10 rounded-xl object-cover" />
+          <img src={project.avatar} alt="Project" className="h-10 w-28 rounded-lg object-contain" />
         ) : (
           <FolderKanban className="h-7 w-7 text-primary" />
         )}
