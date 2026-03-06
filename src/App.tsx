@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginScreen } from '@/components/auth/LoginScreen'
 import { Welcome } from '@/pages/Welcome'
@@ -11,6 +12,7 @@ import { WorkloadView } from '@/pages/WorkloadView'
 import { CostsView } from '@/pages/CostsView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
+import { loadFromServer, setupAutoSync } from '@/lib/sync'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const role = useSessionStore((s) => s.role)
@@ -32,6 +34,24 @@ function RequirePM({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadFromServer().finally(() => setLoading(false))
+    setupAutoSync()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="h-7 w-7 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm">Ładowanie danych…</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <BrowserRouter basename="/Project-Management-Tool">
       <RequireAuth>

@@ -5,3 +5,6 @@ dist
 .DS_Store
 *.local
 .claude/
+
+# PHP config z hasłami – nie trafia na GitHub!
+api/config.php
