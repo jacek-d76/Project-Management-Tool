@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Users } from 'lucide-react'
 import { useProjectStore } from '@/store/projectStore'
+import { useSessionStore } from '@/store/sessionStore'
 import { generateWeeks, computeWorkload } from '@/lib/workload'
 import type { WeekDef, WorkloadCell } from '@/lib/workload'
 import type { TeamMember } from '@/types'
@@ -116,13 +117,17 @@ const NAME_W = 168  // px — fixed width of the name column
 
 export function WorkloadView() {
   const { project, tasks, members } = useProjectStore()
+  const { currentUser, isPM }       = useSessionStore()
   const [popup,   setPopup]   = useState<{ personId: string; weekStart: string } | null>(null)
   const [zoomKey, setZoomKey] = useState<ZoomKey>('normal')
 
   if (!project) return null
 
   const zoom   = ZOOM_LEVELS.find((z) => z.key === zoomKey)!
-  const active = members.filter((m) => m.isActive)
+  const allActive = members.filter((m) => m.isActive)
+  const active = isPM()
+    ? allActive
+    : allActive.filter((m) => m.id === currentUser?.memberId)
   const weeks  = generateWeeks(project.startDate, project.endDate)
   const grid   = computeWorkload(tasks, active, weeks)
 
@@ -138,7 +143,9 @@ export function WorkloadView() {
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Workload</h2>
           <span className="text-xs text-muted-foreground">
-            {active.length} member{active.length !== 1 ? 's' : ''} · {weeks.length} week{weeks.length !== 1 ? 's' : ''}
+            {isPM()
+              ? `${active.length} member${active.length !== 1 ? 's' : ''} · ${weeks.length} week${weeks.length !== 1 ? 's' : ''}`
+              : `Your workload · ${weeks.length} week${weeks.length !== 1 ? 's' : ''}`}
           </span>
         </div>
 
