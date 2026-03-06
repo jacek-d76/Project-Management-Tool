@@ -11,6 +11,7 @@ export interface Project {
   currency: Currency  // waluta bazowa stawek
   exchangeRate: number    // 1 EUR = X PLN
   usdExchangeRate: number // 1 EUR = X USD
+  avatar?: string         // emoji lub URL obrazka
 }
 
 // ─── Uprawnienia użytkownika ──────────────────────────────────────────────────

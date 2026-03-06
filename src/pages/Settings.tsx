@@ -27,6 +27,7 @@ export function Settings() {
     currency: (project?.currency ?? 'EUR') as Currency,
     exchangeRate: project?.exchangeRate ?? 4.25,
     usdExchangeRate: project?.usdExchangeRate ?? 1.08,
+    avatar: project?.avatar ?? '',
   })
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export function Settings() {
         currency: project.currency,
         exchangeRate: project.exchangeRate,
         usdExchangeRate: project.usdExchangeRate ?? 1.08,
+        avatar: project.avatar ?? '',
       })
     }
   }, [project])
@@ -102,6 +104,41 @@ export function Settings() {
           <CardTitle>Project information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Avatar picker */}
+          <div className="space-y-2">
+            <Label>Project avatar</Label>
+            <div className="flex flex-wrap gap-2">
+              {['🚀','🎯','💡','🏗️','🌟','📊','🔧','💼','🏆','🌿','🔬','🎨','📱','🏠','⚡','🎪','🦁','🐉'].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setForm({ ...form, avatar: emoji })}
+                  className={[
+                    'text-xl w-10 h-10 rounded-lg border-2 flex items-center justify-center transition-colors',
+                    form.avatar === emoji
+                      ? 'border-primary bg-primary/10'
+                      : 'border-transparent bg-muted hover:border-muted-foreground/30',
+                  ].join(' ')}
+                >
+                  {emoji}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, avatar: '' })}
+                className={[
+                  'text-xs w-10 h-10 rounded-lg border-2 flex items-center justify-center text-muted-foreground transition-colors',
+                  form.avatar === ''
+                    ? 'border-primary bg-primary/10'
+                    : 'border-transparent bg-muted hover:border-muted-foreground/30',
+                ].join(' ')}
+              >
+                None
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">Displayed above the project name in the sidebar.</p>
+          </div>
+
           <div className="space-y-2">
             <Label>Project name</Label>
             <Input

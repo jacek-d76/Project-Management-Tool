@@ -256,7 +256,7 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'project-manager-storage',
-      version: 6,
+      version: 7,
       migrate: (persistedState, version) => {
         const s = persistedState as Record<string, unknown>
         if (version < 2 && Array.isArray(s.persons)) {
@@ -300,6 +300,11 @@ export const useProjectStore = create<ProjectState>()(
               hourlyRateCurrency: m.hourlyRateCurrency ?? projectCurrency,
             }))
           }
+        }
+        // v6 → v7: avatar on project
+        if (version < 7 && s.project && typeof s.project === 'object') {
+          const p = s.project as Record<string, unknown>
+          p.avatar = p.avatar ?? ''
         }
         return s
       },
