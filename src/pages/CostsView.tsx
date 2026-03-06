@@ -12,7 +12,13 @@ function fmt(eur: number, cur: DisplayCur, eurToPln: number, eurToUsd: number): 
   const val = cur === 'PLN' ? eur * eurToPln
             : cur === 'USD' ? eur * eurToUsd
             : eur
-  return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  const n = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  return cur === 'USD' ? `$${n}` : `${n} ${cur}`
+}
+
+function fmtNative(amount: number, currency: string): string {
+  const n = amount.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  return currency === 'USD' ? `$${n}` : `${n} ${currency}`
 }
 
 // ─── Summary cards ────────────────────────────────────────────────────────────
@@ -216,27 +222,27 @@ export function CostsView() {
           <StatCard
             label="Total budget"
             value={fmt(totals.budget, cur, eurToPln, eurToUsd)}
-            sub={`${cur}${totals.contractorsBudget > 0 ? ` (tasks + contracts)` : ''}`}
+            sub={totals.contractorsBudget > 0 ? 'tasks + contracts' : undefined}
             desc="Sum of task costs (individual hourly + fixed price) and company contracts."
           />
           <StatCard
             label="Earned value"
             value={fmt(totals.earnedValue, cur, eurToPln, eurToUsd)}
-            sub={`${totals.evPct}% of budget · ${cur}`}
+            sub={`${totals.evPct}% of budget`}
             desc="Budget × progress %. Shows how much work has been completed in monetary terms."
             color="text-green-600 dark:text-green-400"
           />
           <StatCard
             label="Actual cost"
             value={totals.actualCost > 0 ? fmt(totals.actualCost, cur, eurToPln, eurToUsd) : '—'}
-            sub={totals.actualCost > 0 ? cur : 'No actual hours logged'}
+            sub={totals.actualCost > 0 ? undefined : 'No actual hours logged'}
             desc="Real cost based on actual hours logged × hourly rate. If AC > EV, the project is over budget."
             color={totals.actualCost > totals.earnedValue ? 'text-red-600' : undefined}
           />
           <StatCard
             label="Remaining"
             value={fmt(totals.remaining, cur, eurToPln, eurToUsd)}
-            sub={`${100 - totals.evPct}% of budget · ${cur}`}
+            sub={`${100 - totals.evPct}% of budget`}
             desc="Budget − Earned value. Estimated cost of work still to be done."
           />
         </div>
@@ -256,7 +262,7 @@ export function CostsView() {
               <span className="text-xs text-muted-foreground">
                 {contractorCosts.length} {contractorCosts.length === 1 ? 'company' : 'companies'} ·{' '}
                 <span className="font-medium text-foreground">
-                  {fmt(totals.contractorsBudget, cur, eurToPln, eurToUsd)} {cur}
+                  {fmt(totals.contractorsBudget, cur, eurToPln, eurToUsd)}
                 </span>
               </span>
             </button>
@@ -300,11 +306,11 @@ export function CostsView() {
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           <span className="font-semibold text-primary">
-                            {c.contractPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} {c.contractCurrency}
+                            {fmtNative(c.contractPrice, c.contractCurrency)}
                           </span>
                           {c.contractCurrency !== 'EUR' && (
                             <span className="block text-[11px] text-muted-foreground">
-                              ≈ {fmt(c.contractPriceEur, cur, eurToPln, eurToUsd)} {cur}
+                              ≈ {fmt(c.contractPriceEur, cur, eurToPln, eurToUsd)}
                             </span>
                           )}
                         </td>
@@ -315,7 +321,7 @@ export function CostsView() {
                     <tr className="bg-muted/20 border-t font-semibold text-sm">
                       <td className="px-3 py-2" colSpan={3}>Total contracts</td>
                       <td className="px-3 py-2 text-right tabular-nums text-primary">
-                        {fmt(totals.contractorsBudget, cur, eurToPln, eurToUsd)} {cur}
+                        {fmt(totals.contractorsBudget, cur, eurToPln, eurToUsd)}
                       </td>
                     </tr>
                   </tfoot>
