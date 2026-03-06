@@ -77,20 +77,20 @@ function NotesEditor({
     <div className="rounded-md border focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 px-2 py-1 border-b bg-muted/30">
-        <ToolbarButton title="Pogrubienie (**tekst**)" onClick={() => wrap('**', '**')}>
+        <ToolbarButton title="Bold (**text**)" onClick={() => wrap('**', '**')}>
           <Bold className="h-3.5 w-3.5" />
         </ToolbarButton>
-        <ToolbarButton title="Kursywa (*tekst*)" onClick={() => wrap('*', '*')}>
+        <ToolbarButton title="Italic (*text*)" onClick={() => wrap('*', '*')}>
           <Italic className="h-3.5 w-3.5" />
         </ToolbarButton>
-        <ToolbarButton title="Lista (- element)" onClick={insertList}>
+        <ToolbarButton title="List (- item)" onClick={insertList}>
           <List className="h-3.5 w-3.5" />
         </ToolbarButton>
         <div className="flex-1" />
-        <ToolbarButton title={preview ? 'Edytuj' : 'Podgląd'} onClick={() => setPreview((v) => !v)}>
+        <ToolbarButton title={preview ? 'Edit' : 'Preview'} onClick={() => setPreview((v) => !v)}>
           <span className="flex items-center gap-1">
             {preview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            <span>{preview ? 'Edytuj' : 'Podgląd'}</span>
+            <span>{preview ? 'Edit' : 'Preview'}</span>
           </span>
         </ToolbarButton>
       </div>
@@ -98,14 +98,14 @@ function NotesEditor({
       {preview ? (
         <div
           className="min-h-[120px] px-3 py-2 text-sm prose-sm [&_ul]:list-disc [&_ul]:list-inside [&_ul]:space-y-0.5"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(value) || '<span class="text-muted-foreground italic">Brak treści</span>' }}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(value) || '<span class="text-muted-foreground italic">No content</span>' }}
         />
       ) : (
         <Textarea
           ref={ref}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={'Zakres prac, warunki kontraktu, notatki...\n\n**Pogrubienie**, *kursywa*, lista:\n- element 1\n- element 2'}
+          placeholder={'Scope of work, contract terms, notes...\n\n**Bold**, *italic*, list:\n- item 1\n- item 2'}
           className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[120px] resize-y"
         />
       )}
@@ -152,8 +152,8 @@ export function ContractorsView() {
   const handleDelete = (c: Contractor) => {
     const assignedCount = members.filter((m) => m.contractorId === c.id).length
     const msg = assignedCount > 0
-      ? `Firma "${c.name}" ma ${assignedCount} przypisanych członków. Czy na pewno usunąć? Członkowie zostaną odpisani od firmy.`
-      : `Usunąć firmę "${c.name}"?`
+      ? `"${c.name}" has ${assignedCount} assigned member${assignedCount !== 1 ? 's' : ''}. Delete anyway? Members will be unlinked from this company.`
+      : `Delete contractor "${c.name}"?`
     if (confirm(msg)) deleteContractor(c.id)
   }
 
@@ -168,8 +168,8 @@ export function ContractorsView() {
             Contractors
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {contractors.length} {contractors.length === 1 ? 'firma' : 'firmy/firm'} ·{' '}
-            łączna wartość kontraktów:{' '}
+            {contractors.length} {contractors.length === 1 ? 'contractor' : 'contractors'} ·{' '}
+            total contract value:{' '}
             <span className="font-semibold">
               {totalContracts.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {currency}
             </span>
@@ -177,7 +177,7 @@ export function ContractorsView() {
         </div>
         <Button onClick={openAdd}>
           <Plus className="h-4 w-4 mr-2" />
-          Dodaj firmę
+          Add contractor
         </Button>
       </div>
 
@@ -185,9 +185,9 @@ export function ContractorsView() {
         <Card>
           <CardContent className="py-12 text-center">
             <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Brak firm kontrahentów.</p>
+            <p className="text-muted-foreground">No contractors yet.</p>
             <p className="text-sm text-muted-foreground">
-              Kliknij "Dodaj firmę" aby dodać pierwszego kontrahenta.
+              Click "Add contractor" to add the first one.
             </p>
           </CardContent>
         </Card>
@@ -249,20 +249,20 @@ export function ContractorsView() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Edytuj firmę' : 'Nowa firma kontrahent'}</DialogTitle>
+            <DialogTitle>{editId ? 'Edit contractor' : 'New contractor'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Nazwa firmy *</Label>
+              <Label>Company name *</Label>
               <Input
-                placeholder="np. Politechnika Krakowska"
+                placeholder="e.g. Kraków University of Technology"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 autoFocus
               />
             </div>
             <div className="space-y-2">
-              <Label>Wartość kontraktu ({currency})</Label>
+              <Label>Contract value ({currency})</Label>
               <Input
                 type="number" min="0" step="100"
                 value={form.contractPrice}
@@ -270,20 +270,20 @@ export function ContractorsView() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Zakres prac / notatki</Label>
+              <Label>Scope / notes</Label>
               <NotesEditor
                 value={form.description}
                 onChange={(v) => setForm({ ...form, description: v })}
               />
               <p className="text-[10px] text-muted-foreground">
-                Obsługuje **pogrubienie**, *kursywę* i listy (- element)
+                Supports **bold**, *italic* and lists (- item)
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Anuluj</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={!form.name.trim()}>
-              {editId ? 'Zapisz zmiany' : 'Dodaj firmę'}
+              {editId ? 'Save changes' : 'Add contractor'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -185,7 +185,7 @@ export function UsersView() {
                         <span className="font-mono">{m.username}</span>
                         <span className="mx-1">·</span>
                         <span>{m.weeklyHours}h/wk · {m.hourlyRate} {currencyLabel}/h</span>
-                        {contractor && <span className="ml-1 text-blue-600 dark:text-blue-400">(kontrakt firmy)</span>}
+                        {contractor && <span className="ml-1 text-blue-600 dark:text-blue-400">(company contract)</span>}
                         {!m.isActive && <span className="ml-1 text-destructive">(inactive)</span>}
                       </div>
                     </div>
@@ -311,16 +311,16 @@ export function UsersView() {
               </div>
               {contractors.length > 0 && (
                 <div className="space-y-2 col-span-2">
-                  <Label>Firma kontrahent</Label>
+                  <Label>Contractor company</Label>
                   <Select
                     value={form.contractorId ?? ''}
                     onValueChange={(v) => setForm({ ...form, contractorId: v === '__none__' ? '' : v })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Brak (rozliczenie indywidualne)" />
+                      <SelectValue placeholder="None (individual billing)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">Brak (rozliczenie indywidualne)</SelectItem>
+                      <SelectItem value="__none__">None (individual billing)</SelectItem>
                       {contractors.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
@@ -328,7 +328,7 @@ export function UsersView() {
                   </Select>
                   {form.contractorId && (
                     <p className="text-xs text-muted-foreground">
-                      Koszty godzinowe tej osoby nie będą sumowane — pokrywa je kontrakt firmy.
+                      Hourly costs for this member will not be summed — covered by the company contract.
                     </p>
                   )}
                 </div>

@@ -170,7 +170,7 @@ export function CostsView() {
 
   const cur = showPln ? 'PLN' : 'EUR'
 
-  // Tylko osoby bez firmy (indywidualnie rozliczane)
+  // Only members without a company (individually billed)
   const individualPersons = persons.filter((p) => !p.contractorId)
 
   return (
@@ -208,8 +208,8 @@ export function CostsView() {
           <StatCard
             label="Total budget"
             value={fmt(totals.budget, showPln, rate)}
-            sub={`${cur}${totals.contractorsBudget > 0 ? ` (zadania + kontrakty)` : ''}`}
-            desc="Suma kosztów zadań (godziny indywidualne + fixed price) oraz kontraktów firm."
+            sub={`${cur}${totals.contractorsBudget > 0 ? ` (tasks + contracts)` : ''}`}
+            desc="Sum of task costs (individual hourly + fixed price) and company contracts."
           />
           <StatCard
             label="Earned value"
@@ -244,9 +244,9 @@ export function CostsView() {
                 ? <ChevronDown  className="h-4 w-4 text-muted-foreground" />
                 : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
               <Building2 className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">Kontrakty firm</h2>
+              <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">Company contracts</h2>
               <span className="text-xs text-muted-foreground">
-                {contractorCosts.length} firma/firm ·{' '}
+                {contractorCosts.length} {contractorCosts.length === 1 ? 'company' : 'companies'} ·{' '}
                 <span className="font-medium text-foreground">
                   {fmt(totals.contractorsBudget, showPln, rate)} {cur}
                 </span>
@@ -257,10 +257,10 @@ export function CostsView() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-muted/30 text-xs text-muted-foreground border-b">
-                      <th className="text-left px-3 py-2 font-medium">Firma</th>
-                      <th className="text-left px-3 py-2 font-medium hidden sm:table-cell">Zakres / notatki</th>
-                      <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Członkowie</th>
-                      <th className="text-right px-3 py-2 font-medium">Kontrakt</th>
+                      <th className="text-left px-3 py-2 font-medium">Company</th>
+                      <th className="text-left px-3 py-2 font-medium hidden sm:table-cell">Scope / notes</th>
+                      <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Members</th>
+                      <th className="text-right px-3 py-2 font-medium">Contract</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -290,7 +290,7 @@ export function CostsView() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-muted/20 border-t font-semibold text-sm">
-                      <td className="px-3 py-2" colSpan={3}>Łącznie kontrakty</td>
+                      <td className="px-3 py-2" colSpan={3}>Total contracts</td>
                       <td className="px-3 py-2 text-right tabular-nums text-primary">
                         {fmt(totals.contractorsBudget, showPln, rate)} {cur}
                       </td>
@@ -302,7 +302,7 @@ export function CostsView() {
           </section>
         )}
 
-        {/* ── By person (indywidualni) ── */}
+        {/* ── By person (individual billing) ── */}
         {individualPersons.length > 0 && (
           <section>
             <button
@@ -314,7 +314,7 @@ export function CostsView() {
                 : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
               <h2 className="text-sm font-semibold group-hover:text-primary transition-colors">By person</h2>
               <span className="text-xs text-muted-foreground">
-                {individualPersons.length} member{individualPersons.length !== 1 ? 's' : ''} (indywidualni)
+                {individualPersons.length} member{individualPersons.length !== 1 ? 's' : ''} (individual billing)
               </span>
             </button>
             {showPersons && <div className="rounded-xl border overflow-hidden">
@@ -417,7 +417,7 @@ export function CostsView() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-muted/20 border-t font-semibold text-sm">
-                        <td className="px-3 py-2" colSpan={3}>Total (zadania)</td>
+                        <td className="px-3 py-2" colSpan={3}>Total (tasks)</td>
                         <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.tasksBudget, showPln, rate)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{fmt(totals.earnedValue, showPln, rate)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
