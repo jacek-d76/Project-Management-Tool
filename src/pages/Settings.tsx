@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings2, Download, Upload, Trash2 } from 'lucide-react'
+import { Settings2, Download, Upload, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +42,28 @@ export function Settings() {
       })
     }
   }, [project])
+
+  const [fetchingRates, setFetchingRates] = useState(false)
+  const [ratesError,    setRatesError]    = useState('')
+
+  const fetchRates = async () => {
+    setFetchingRates(true)
+    setRatesError('')
+    try {
+      const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=PLN,USD')
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json() as { rates: { PLN?: number; USD?: number }; date: string }
+      setForm((f) => ({
+        ...f,
+        exchangeRate:    data.rates.PLN ?? f.exchangeRate,
+        usdExchangeRate: data.rates.USD ?? f.usdExchangeRate,
+      }))
+    } catch {
+      setRatesError('Failed to fetch rates. Check your connection.')
+    } finally {
+      setFetchingRates(false)
+    }
+  }
 
   const handleSave = () => {
     updateProject(form)
@@ -154,7 +176,20 @@ export function Settings() {
               </div>
             </div>
           </div>
-          <Button onClick={handleSave}>Save settings</Button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button onClick={handleSave}>Save settings</Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={fetchRates}
+              disabled={fetchingRates}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-2 ${fetchingRates ? 'animate-spin' : ''}`} />
+              {fetchingRates ? 'Fetching…' : 'Fetch current rates (ECB)'}
+            </Button>
+            {ratesError && <p className="text-xs text-destructive">{ratesError}</p>}
+          </div>
         </CardContent>
       </Card>
 
