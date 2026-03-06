@@ -139,7 +139,7 @@ export function WorkloadView() {
     <div className="flex flex-col h-full overflow-hidden">
 
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background shrink-0 flex-wrap gap-2">
+      <div className="flex flex-wrap items-center justify-between px-4 py-2 border-b bg-background shrink-0 gap-x-4 gap-y-1">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Workload</h2>
           <span className="text-xs text-muted-foreground">
@@ -149,45 +149,43 @@ export function WorkloadView() {
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* Zoom buttons */}
-          <div className="flex items-center gap-1 rounded-md border p-0.5">
-            {ZOOM_LEVELS.map((z) => (
-              <button
-                key={z.key}
-                onClick={() => setZoomKey(z.key)}
-                className={[
-                  'px-2.5 py-0.5 rounded text-xs font-medium transition-colors',
-                  zoomKey === z.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                ].join(' ')}
-              >
-                {z.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-3 h-3 rounded-sm bg-sky-50 border border-sky-200" />
-              &lt;50%
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-300" />
-              50–80%
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-3 h-3 rounded-sm bg-orange-200 border border-orange-400" />
-              80–100%
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-3 h-3 rounded-sm bg-red-200 border border-red-400" />
-              &gt;100%
-            </span>
-          </div>
+        {/* Zoom buttons */}
+        <div className="flex items-center gap-1 rounded-md border p-0.5">
+          {ZOOM_LEVELS.map((z) => (
+            <button
+              key={z.key}
+              onClick={() => setZoomKey(z.key)}
+              className={[
+                'px-2.5 py-0.5 rounded text-xs font-medium transition-colors',
+                zoomKey === z.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              ].join(' ')}
+            >
+              {z.label}
+            </button>
+          ))}
         </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded-sm bg-sky-50 border border-sky-200" />
+            &lt;50%
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-300" />
+            50–80%
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded-sm bg-orange-200 border border-orange-400" />
+            80–100%
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded-sm bg-red-200 border border-red-400" />
+            &gt;100%
+            </span>
+          </div>
       </div>
 
       {/* ── Grid ── */}
