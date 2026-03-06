@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ShieldCheck, User } from 'lucide-react'
+import { ShieldCheck, User, FolderKanban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useSessionStore } from '@/store/sessionStore'
+import { useProjectStore } from '@/store/projectStore'
 
 type LoginMode = 'select' | 'pm' | 'user'
 
@@ -13,7 +14,8 @@ export function LoginScreen() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(false)
-  const login = useSessionStore((s) => s.login)
+  const login    = useSessionStore((s) => s.login)
+  const project  = useProjectStore((s) => s.project)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,8 +39,19 @@ export function LoginScreen() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/40">
         <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl">Project Manager</CardTitle>
+          <CardHeader className="text-center space-y-2">
+            <div className="flex justify-center">
+              {project?.avatar ? (
+                <span className="text-5xl leading-none">{project.avatar}</span>
+              ) : (
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                  <FolderKanban className="h-8 w-8 text-primary" />
+                </div>
+              )}
+            </div>
+            <CardTitle className="text-xl">
+              {project?.name ?? 'Project Manager'}
+            </CardTitle>
             <CardDescription>Select login method</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
