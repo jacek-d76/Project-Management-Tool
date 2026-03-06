@@ -42,7 +42,7 @@ export function LoginScreen() {
           <CardHeader className="text-center space-y-2">
             <div className="flex justify-center">
               {project?.avatar ? (
-                <span className="text-5xl leading-none">{project.avatar}</span>
+                <img src={project.avatar} alt="Project" className="h-20 w-20 rounded-2xl object-cover shadow-sm" />
               ) : (
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                   <FolderKanban className="h-8 w-8 text-primary" />

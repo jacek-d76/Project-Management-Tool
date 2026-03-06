@@ -35,7 +35,7 @@ export function Sidebar() {
       {/* Logo / Nazwa projektu */}
       <div className="flex flex-col items-center border-b px-4 py-4 gap-1">
         {project?.avatar ? (
-          <span className="text-3xl leading-none">{project.avatar}</span>
+          <img src={project.avatar} alt="Project" className="h-10 w-10 rounded-xl object-cover" />
         ) : (
           <FolderKanban className="h-7 w-7 text-primary" />
         )}

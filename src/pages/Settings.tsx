@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Settings2, Download, Upload, Trash2, RefreshCw } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Settings2, Download, Upload, Trash2, RefreshCw, ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,8 @@ import { useNavigate } from 'react-router-dom'
 import type { Currency } from '@/types'
 
 export function Settings() {
-  const navigate = useNavigate()
+  const navigate   = useNavigate()
+  const avatarRef  = useRef<HTMLInputElement>(null)
   const { project, updateProject, clearProject, exportJSON, importJSON } = useProjectStore()
 
   const [form, setForm] = useState({
@@ -104,39 +105,57 @@ export function Settings() {
           <CardTitle>Project information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Avatar picker */}
+          {/* Project image */}
           <div className="space-y-2">
-            <Label>Project avatar</Label>
-            <div className="flex flex-wrap gap-2">
-              {['🚀','🎯','💡','🏗️','🌟','📊','🔧','💼','🏆','🌿','🔬','🎨','📱','🏠','⚡','🎪','🦁','🐉'].map((emoji) => (
-                <button
-                  key={emoji}
+            <Label>Project image</Label>
+            <div className="flex items-center gap-4">
+              {form.avatar ? (
+                <div className="relative shrink-0">
+                  <img
+                    src={form.avatar}
+                    alt="Project"
+                    className="h-20 w-20 rounded-xl object-cover border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, avatar: '' })}
+                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="h-20 w-20 rounded-xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center shrink-0 text-muted-foreground/40">
+                  <ImagePlus className="h-8 w-8" />
+                </div>
+              )}
+              <div className="space-y-1">
+                <Button
                   type="button"
-                  onClick={() => setForm({ ...form, avatar: emoji })}
-                  className={[
-                    'text-xl w-10 h-10 rounded-lg border-2 flex items-center justify-center transition-colors',
-                    form.avatar === emoji
-                      ? 'border-primary bg-primary/10'
-                      : 'border-transparent bg-muted hover:border-muted-foreground/30',
-                  ].join(' ')}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => avatarRef.current?.click()}
                 >
-                  {emoji}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, avatar: '' })}
-                className={[
-                  'text-xs w-10 h-10 rounded-lg border-2 flex items-center justify-center text-muted-foreground transition-colors',
-                  form.avatar === ''
-                    ? 'border-primary bg-primary/10'
-                    : 'border-transparent bg-muted hover:border-muted-foreground/30',
-                ].join(' ')}
-              >
-                None
-              </button>
+                  <Upload className="h-3.5 w-3.5 mr-2" />
+                  {form.avatar ? 'Change image' : 'Upload image'}
+                </Button>
+                <p className="text-xs text-muted-foreground">PNG, JPG, SVG. Displayed above project name in sidebar and login screen.</p>
+                <input
+                  ref={avatarRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = (ev) => setForm({ ...form, avatar: ev.target?.result as string })
+                    reader.readAsDataURL(file)
+                    e.target.value = ''
+                  }}
+                />
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Displayed above the project name in the sidebar.</p>
           </div>
 
           <div className="space-y-2">
