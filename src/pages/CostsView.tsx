@@ -157,7 +157,7 @@ export function CostsView() {
 
   const tree            = computeTaskCostTree(tasks, members, TODAY)
   const persons         = computePersonCosts(tasks, members)
-  const contractorCosts = computeContractorCosts(contractors, members)
+  const contractorCosts = computeContractorCosts(contractors, members, tasks)
   const totals          = computeTotals(tree, contractors)
   const rate            = project.exchangeRate
 
@@ -271,12 +271,20 @@ export function CostsView() {
                           {c.description || '—'}
                         </td>
                         <td className="px-3 py-2 hidden md:table-cell">
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-col gap-1">
                             {c.members.length > 0
-                              ? c.members.map((name) => (
-                                  <span key={name} className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                                    {name}
-                                  </span>
+                              ? c.members.map((m) => (
+                                  <div key={m.name} className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                      {m.name}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                                      {m.estimatedHours}h est.
+                                      {m.actualHours > 0 && (
+                                        <> · <span className={m.actualHours > m.estimatedHours ? 'text-orange-500' : 'text-green-600 dark:text-green-400'}>{m.actualHours}h act.</span></>
+                                      )}
+                                    </span>
+                                  </div>
                                 ))
                               : <span className="text-xs text-muted-foreground">—</span>
                             }

@@ -15,12 +15,18 @@ export interface PersonCost {
   contractorId?: string    // jeśli ustawione → koszty pokrywa kontrakt firmy
 }
 
+export interface ContractorMemberWorkload {
+  name: string
+  estimatedHours: number
+  actualHours: number
+}
+
 export interface ContractorCost {
   contractorId: string
   name: string
   contractPrice: number    // EUR
   description: string
-  members: string[]        // imiona przypisanych członków
+  members: ContractorMemberWorkload[]
 }
 
 export interface TaskCost {
@@ -180,13 +186,27 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[]): Person
 export function computeContractorCosts(
   contractors: Contractor[],
   members: TeamMember[],
+  tasks: Task[],
 ): ContractorCost[] {
   return contractors.map((c) => ({
     contractorId: c.id,
     name: c.name,
     contractPrice: c.contractPrice,
     description: c.description,
-    members: members.filter((m) => m.contractorId === c.id).map((m) => m.name),
+    members: members
+      .filter((m) => m.contractorId === c.id)
+      .map((m) => {
+        let estimatedHours = 0, actualHours = 0
+        for (const task of tasks) {
+          for (const a of task.assignments) {
+            if (a.personId === m.id) {
+              estimatedHours += a.estimatedHours
+              actualHours    += a.actualHours ?? 0
+            }
+          }
+        }
+        return { name: m.name, estimatedHours, actualHours }
+      }),
   }))
 }
 
