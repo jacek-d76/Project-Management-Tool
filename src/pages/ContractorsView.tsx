@@ -8,8 +8,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useProjectStore } from '@/store/projectStore'
-import type { Contractor } from '@/types'
+import type { Contractor, Currency } from '@/types'
 
 // ─── Prosty render markdown (bold, italic, listy) ─────────────────────────────
 
@@ -115,7 +116,7 @@ function NotesEditor({
 
 // ─── ContractorsView ──────────────────────────────────────────────────────────
 
-const emptyForm = { name: '', contractPrice: 0, description: '' }
+const emptyForm = { name: '', contractPrice: 0, contractCurrency: 'EUR' as Currency, description: '' }
 
 export function ContractorsView() {
   const { contractors, members, addContractor, updateContractor, deleteContractor, project } =
@@ -125,17 +126,17 @@ export function ContractorsView() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm]     = useState({ ...emptyForm })
 
-  const currency = project?.currency ?? 'EUR'
+  const projectCurrency = project?.currency ?? 'EUR'
 
   const openAdd = () => {
     setEditId(null)
-    setForm({ ...emptyForm })
+    setForm({ ...emptyForm, contractCurrency: projectCurrency })
     setOpen(true)
   }
 
   const openEdit = (c: Contractor) => {
     setEditId(c.id)
-    setForm({ name: c.name, contractPrice: c.contractPrice, description: c.description })
+    setForm({ name: c.name, contractPrice: c.contractPrice, contractCurrency: c.contractCurrency ?? 'EUR', description: c.description })
     setOpen(true)
   }
 
@@ -157,8 +158,6 @@ export function ContractorsView() {
     if (confirm(msg)) deleteContractor(c.id)
   }
 
-  const totalContracts = contractors.reduce((s, c) => s + c.contractPrice, 0)
-
   return (
     <div className="p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
@@ -168,11 +167,16 @@ export function ContractorsView() {
             Contractors
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {contractors.length} {contractors.length === 1 ? 'contractor' : 'contractors'} ·{' '}
-            total contract value:{' '}
-            <span className="font-semibold">
-              {totalContracts.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {currency}
-            </span>
+            {contractors.length} {contractors.length === 1 ? 'contractor' : 'contractors'}
+            {contractors.length > 0 && (
+              <> ·{' '}
+                {contractors.map((c) => (
+                  <span key={c.id} className="font-semibold mr-2">
+                    {c.contractPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} {c.contractCurrency ?? projectCurrency}
+                  </span>
+                ))}
+              </>
+            )}
           </p>
         </div>
         <Button onClick={openAdd}>
@@ -203,7 +207,7 @@ export function ContractorsView() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold">{c.name}</span>
                         <span className="text-sm font-mono text-primary">
-                          {c.contractPrice.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {currency}
+                          {c.contractPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} {c.contractCurrency ?? projectCurrency}
                         </span>
                       </div>
                       {c.description && (
@@ -261,13 +265,31 @@ export function ContractorsView() {
                 autoFocus
               />
             </div>
-            <div className="space-y-2">
-              <Label>Contract value ({currency})</Label>
-              <Input
-                type="number" min="0" step="100"
-                value={form.contractPrice}
-                onChange={(e) => setForm({ ...form, contractPrice: parseFloat(e.target.value) || 0 })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Contract value</Label>
+                <Input
+                  type="number" min="0" step="100"
+                  value={form.contractPrice}
+                  onChange={(e) => setForm({ ...form, contractPrice: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Currency</Label>
+                <Select
+                  value={form.contractCurrency}
+                  onValueChange={(v) => setForm({ ...form, contractCurrency: v as Currency })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="PLN">PLN</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Scope / notes</Label>

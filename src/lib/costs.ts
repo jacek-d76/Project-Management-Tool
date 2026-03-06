@@ -1,4 +1,4 @@
-import type { Task, TeamMember, Contractor } from '@/types'
+import type { Task, TeamMember, Contractor, Currency } from '@/types'
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
@@ -24,7 +24,9 @@ export interface ContractorMemberWorkload {
 export interface ContractorCost {
   contractorId: string
   name: string
-  contractPrice: number    // EUR
+  contractPrice: number      // in contractCurrency
+  contractPriceEur: number   // normalized to EUR for budget totals
+  contractCurrency: Currency
   description: string
   members: ContractorMemberWorkload[]
 }
@@ -183,36 +185,49 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[]): Person
   return [...map.values()].filter((p) => p.estimatedHours > 0 || p.estimatedCost > 0)
 }
 
+function toEur(amount: number, currency: Currency, eurToPln: number, eurToUsd: number): number {
+  if (currency === 'PLN') return amount / eurToPln
+  if (currency === 'USD') return amount / eurToUsd
+  return amount
+}
+
 export function computeContractorCosts(
   contractors: Contractor[],
   members: TeamMember[],
   tasks: Task[],
+  rates: { eurToPln: number; eurToUsd: number },
 ): ContractorCost[] {
-  return contractors.map((c) => ({
-    contractorId: c.id,
-    name: c.name,
-    contractPrice: c.contractPrice,
-    description: c.description,
-    members: members
-      .filter((m) => m.contractorId === c.id)
-      .map((m) => {
-        let estimatedHours = 0, actualHours = 0
-        for (const task of tasks) {
-          for (const a of task.assignments) {
-            if (a.personId === m.id) {
-              estimatedHours += a.estimatedHours
-              actualHours    += a.actualHours ?? 0
+  return contractors.map((c) => {
+    const currency = c.contractCurrency ?? 'EUR'
+    const contractPriceEur = toEur(c.contractPrice, currency, rates.eurToPln, rates.eurToUsd)
+    return {
+      contractorId: c.id,
+      name: c.name,
+      contractPrice: c.contractPrice,
+      contractPriceEur,
+      contractCurrency: currency,
+      description: c.description,
+      members: members
+        .filter((m) => m.contractorId === c.id)
+        .map((m) => {
+          let estimatedHours = 0, actualHours = 0
+          for (const task of tasks) {
+            for (const a of task.assignments) {
+              if (a.personId === m.id) {
+                estimatedHours += a.estimatedHours
+                actualHours    += a.actualHours ?? 0
+              }
             }
           }
-        }
-        return { name: m.name, estimatedHours, actualHours }
-      }),
-  }))
+          return { name: m.name, estimatedHours, actualHours }
+        }),
+    }
+  })
 }
 
-export function computeTotals(tree: TaskCost[], contractors: Contractor[]): CostTotals {
+export function computeTotals(tree: TaskCost[], contractorCosts: ContractorCost[]): CostTotals {
   const tasksBudget      = tree.reduce((s, t) => s + t.estimatedCost, 0)
-  const contractorsBudget = contractors.reduce((s, c) => s + c.contractPrice, 0)
+  const contractorsBudget = contractorCosts.reduce((s, c) => s + c.contractPriceEur, 0)
   const budget      = tasksBudget + contractorsBudget
   const earnedValue = tree.reduce((s, t) => s + t.earnedValue, 0)
   const actualCost  = tree.reduce((s, t) => s + t.actualCost, 0)

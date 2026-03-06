@@ -256,7 +256,7 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'project-manager-storage',
-      version: 4,
+      version: 5,
       migrate: (persistedState, version) => {
         const s = persistedState as Record<string, unknown>
         if (version < 2 && Array.isArray(s.persons)) {
@@ -275,9 +275,21 @@ export const useProjectStore = create<ProjectState>()(
             return { ...rest, assignments }
           })
         }
-        // v3 → v4: dodano contractors
         if (version < 4) {
           s.contractors = s.contractors ?? []
+        }
+        // v4 → v5: usdExchangeRate on project, contractCurrency on contractors
+        if (version < 5) {
+          if (s.project && typeof s.project === 'object') {
+            const p = s.project as Record<string, unknown>
+            p.usdExchangeRate = p.usdExchangeRate ?? 1.08
+          }
+          if (Array.isArray(s.contractors)) {
+            s.contractors = (s.contractors as Record<string, unknown>[]).map((c) => ({
+              ...c,
+              contractCurrency: c.contractCurrency ?? 'EUR',
+            }))
+          }
         }
         return s
       },

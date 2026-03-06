@@ -26,6 +26,7 @@ export function Settings() {
     endDate: project?.endDate ?? '',
     currency: (project?.currency ?? 'EUR') as Currency,
     exchangeRate: project?.exchangeRate ?? 4.25,
+    usdExchangeRate: project?.usdExchangeRate ?? 1.08,
   })
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function Settings() {
         endDate: project.endDate,
         currency: project.currency,
         exchangeRate: project.exchangeRate,
+        usdExchangeRate: project.usdExchangeRate ?? 1.08,
       })
     }
   }, [project])
@@ -110,7 +112,7 @@ export function Settings() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label>Base currency</Label>
               <Select
@@ -123,25 +125,32 @@ export function Settings() {
                 <SelectContent>
                   <SelectItem value="EUR">EUR (euro)</SelectItem>
                   <SelectItem value="PLN">PLN (złoty)</SelectItem>
+                  <SelectItem value="USD">USD (dollar)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Rate: 1 EUR =</Label>
+              <Label>1 EUR =</Label>
               <div className="relative">
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
+                  type="number" step="0.01" min="0.01"
                   value={form.exchangeRate}
-                  onChange={(e) =>
-                    setForm({ ...form, exchangeRate: parseFloat(e.target.value) || 4.25 })
-                  }
+                  onChange={(e) => setForm({ ...form, exchangeRate: parseFloat(e.target.value) || 4.25 })}
                   className="pr-12"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  PLN
-                </span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">PLN</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>1 EUR =</Label>
+              <div className="relative">
+                <Input
+                  type="number" step="0.01" min="0.01"
+                  value={form.usdExchangeRate}
+                  onChange={(e) => setForm({ ...form, usdExchangeRate: parseFloat(e.target.value) || 1.08 })}
+                  className="pr-12"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">USD</span>
               </div>
             </div>
           </div>

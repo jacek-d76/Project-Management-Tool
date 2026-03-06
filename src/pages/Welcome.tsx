@@ -29,6 +29,7 @@ export function Welcome() {
     endDate: '',
     currency: 'EUR' as Currency,
     exchangeRate: 4.25,
+    usdExchangeRate: 1.08,
   })
 
   if (project) {

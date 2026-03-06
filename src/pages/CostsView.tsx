@@ -155,11 +155,12 @@ export function CostsView() {
 
   if (!project) return null
 
+  const rate            = project.exchangeRate
+  const usdRate         = project.usdExchangeRate ?? 1.08
   const tree            = computeTaskCostTree(tasks, members, TODAY)
   const persons         = computePersonCosts(tasks, members)
-  const contractorCosts = computeContractorCosts(contractors, members, tasks)
-  const totals          = computeTotals(tree, contractors)
-  const rate            = project.exchangeRate
+  const contractorCosts = computeContractorCosts(contractors, members, tasks, { eurToPln: rate, eurToUsd: usdRate })
+  const totals          = computeTotals(tree, contractorCosts)
 
   const toggleExpand = (id: string) =>
     setExpanded((prev) => {
@@ -290,8 +291,15 @@ export function CostsView() {
                             }
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums font-semibold text-primary">
-                          {fmt(c.contractPrice, showPln, rate)} {cur}
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          <span className="font-semibold text-primary">
+                            {c.contractPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} {c.contractCurrency}
+                          </span>
+                          {c.contractCurrency !== 'EUR' && (
+                            <span className="block text-[11px] text-muted-foreground">
+                              ≈ {fmt(c.contractPriceEur, showPln, rate)} {cur}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -1,6 +1,6 @@
 // ─── Projekt ────────────────────────────────────────────────────────────────
 
-export type Currency = 'EUR' | 'PLN'
+export type Currency = 'EUR' | 'PLN' | 'USD'
 
 export interface Project {
   id: string
@@ -9,7 +9,8 @@ export interface Project {
   startDate: string   // ISO date string "YYYY-MM-DD"
   endDate: string
   currency: Currency  // waluta bazowa stawek
-  exchangeRate: number // 1 EUR = X PLN
+  exchangeRate: number    // 1 EUR = X PLN
+  usdExchangeRate: number // 1 EUR = X USD
 }
 
 // ─── Uprawnienia użytkownika ──────────────────────────────────────────────────
@@ -37,8 +38,9 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
 export interface Contractor {
   id: string
   name: string
-  contractPrice: number   // kwota kontraktu w walucie bazowej projektu
-  description: string     // zakres prac / notatki
+  contractPrice: number      // kwota kontraktu w contractCurrency
+  contractCurrency: Currency // waluta kontraktu (może różnić się od waluty projektu)
+  description: string        // zakres prac / notatki
 }
 
 // ─── Członek zespołu (konto logowania + dane projektowe) ─────────────────────
