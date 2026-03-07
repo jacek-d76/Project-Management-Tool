@@ -111,6 +111,82 @@ function CellPopup({
   )
 }
 
+// ─── Member breakdown panel ───────────────────────────────────────────────────
+
+function MemberBreakdown({
+  member,
+  row,
+  compact = false,
+}: {
+  member: TeamMember
+  row: Map<string, WorkloadCell>
+  compact?: boolean
+}) {
+  // Aggregate tasks + totals across all weeks
+  const taskMap = new Map<string, { title: string; hours: number }>()
+  let totalHours    = 0
+  let totalCapacity = 0
+
+  for (const cell of row.values()) {
+    totalHours    += cell.hours
+    totalCapacity += cell.capacity
+    for (const t of cell.tasks) {
+      const ex = taskMap.get(t.taskId)
+      if (ex) ex.hours += t.hours
+      else taskMap.set(t.taskId, { title: t.title, hours: t.hours })
+    }
+  }
+
+  const tasks = [...taskMap.values()]
+    .map((t) => ({ ...t, hours: Math.round(t.hours * 10) / 10 }))
+    .sort((a, b) => b.hours - a.hours)
+
+  if (tasks.length === 0) return null
+
+  const ratio  = totalCapacity > 0 ? totalHours / totalCapacity : 0
+  const pct    = Math.round(ratio * 100)
+  const over   = ratio > 1
+  const barW   = `${Math.min(ratio * 100, 100)}%`
+  const barCls = over ? 'bg-red-500' : ratio < 0.8 ? 'bg-yellow-400' : 'bg-orange-400'
+
+  return (
+    <div className={`rounded-xl border bg-background shadow-sm ${compact ? 'p-4' : 'p-5'}`}>
+      {/* Member header */}
+      <div className="mb-3">
+        <p className={`font-semibold ${compact ? 'text-sm' : 'text-base'}`}>{member.name}</p>
+        {member.projectRole && (
+          <p className="text-xs text-muted-foreground">{member.projectRole}</p>
+        )}
+      </div>
+
+      {/* Overall progress bar */}
+      <div className="mb-3">
+        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${barCls}`} style={{ width: barW }} />
+        </div>
+        <p className={`text-xs mt-1 font-medium ${over ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+          {Math.round(totalHours * 10) / 10}h&nbsp;/&nbsp;{totalCapacity}h&nbsp;·&nbsp;
+          <span className={over ? 'font-bold' : ''}>{pct}%</span>
+          {over && <span className="ml-1 font-bold">· OVERLOADED</span>}
+        </p>
+      </div>
+
+      {/* Task list */}
+      <div className="space-y-1">
+        {tasks.map((t, i) => (
+          <div
+            key={i}
+            className="flex justify-between items-center text-xs rounded-md bg-muted px-3 py-1.5 gap-2"
+          >
+            <span className="truncate flex-1 text-muted-foreground">{t.title}</span>
+            <span className="font-semibold shrink-0">{t.hours}h</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── WorkloadView ─────────────────────────────────────────────────────────────
 
 const NAME_W = 168  // px — fixed width of the name column
@@ -285,6 +361,39 @@ export function WorkloadView() {
               })}
             </tbody>
           </table>
+
+          {/* ── Task breakdown below the grid ── */}
+          {active.length > 0 && (
+            <div className="px-4 py-5 border-t">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+                Task breakdown — full project
+              </h3>
+              {isPM() ? (
+                /* PM: grid of member cards */
+                <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                  {active.map((member) => {
+                    const row = grid.get(member.id)
+                    if (!row) return null
+                    return (
+                      <MemberBreakdown key={member.id} member={member} row={row} compact />
+                    )
+                  })}
+                </div>
+              ) : (
+                /* Team member: own card full width (max ~520px) */
+                (() => {
+                  const me = active[0]
+                  const row = me ? grid.get(me.id) : undefined
+                  if (!me || !row) return null
+                  return (
+                    <div className="max-w-lg">
+                      <MemberBreakdown member={me} row={row} />
+                    </div>
+                  )
+                })()
+              )}
+            </div>
+          )}
         </div>
       )}
 
