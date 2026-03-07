@@ -4,7 +4,7 @@ import {
   PointerSensor, useSensor, useSensors,
   type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core'
-import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo, Calculator } from 'lucide-react'
+import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo, Calculator, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,7 @@ import { useSessionStore } from '@/store/sessionStore'
 import { wouldCreateCycle } from '@/lib/scheduler'
 import type { Task, TaskStatus, TaskPriority, TeamMember, DependencyType } from '@/types'
 
-// ─── Konfiguracja ─────────────────────────────────────────────────────────────
+// ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATUS_OPTS: { value: TaskStatus; label: string; cls: string }[] = [
   { value: 'TODO',        label: 'To do',       cls: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
@@ -40,6 +40,34 @@ const priorityCls   = (p: TaskPriority) => PRIORITY_OPTS.find((o) => o.value ===
 
 type DropZone = 'before' | 'after' | 'inside'
 type DropInfo = { id: string; zone: DropZone } | null
+
+// ─── ConfirmModal ─────────────────────────────────────────────────────────────
+
+function ConfirmModal({
+  title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel,
+}: {
+  title: string
+  message: React.ReactNode
+  confirmLabel?: string
+  danger?: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-background rounded-xl shadow-xl border w-full max-w-sm mx-4 p-6 space-y-4">
+        <h3 className="font-semibold text-base">{title}</h3>
+        <div className="text-sm text-muted-foreground leading-relaxed">{message}</div>
+        <div className="flex gap-2 justify-end pt-1">
+          <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+          <Button size="sm" variant={danger ? 'destructive' : 'default'} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── InlineAdd ────────────────────────────────────────────────────────────────
 
@@ -79,7 +107,7 @@ function InlineAdd({
 // ─── DraggableTaskRow ────────────────────────────────────────────────────────
 
 function DraggableTaskRow({
-  task, depth, isSelected, isExpanded, hasChildren, canEdit,
+  task, depth, isSelected, isExpanded, hasChildren, isContainer, canEdit, canAddSubtask,
   dropInfo, isDragActive,
   onSelect, onToggleExpand, onStartAdd, onDelete,
   children,
@@ -89,7 +117,9 @@ function DraggableTaskRow({
   isSelected: boolean
   isExpanded: boolean
   hasChildren: boolean
+  isContainer: boolean
   canEdit: boolean
+  canAddSubtask: boolean
   dropInfo: DropInfo
   isDragActive: boolean
   onSelect: () => void
@@ -108,7 +138,6 @@ function DraggableTaskRow({
 
   return (
     <div>
-      {/* Drop line: before */}
       {showBefore && (
         <div className="h-0.5 bg-primary rounded-full my-0.5" style={{ marginLeft: indent + 20, marginRight: 8 }} />
       )}
@@ -157,8 +186,13 @@ function DraggableTaskRow({
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progress}%` }} />
         </div>
 
+        {/* Container icon */}
+        {isContainer && (
+          <Layers className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+        )}
+
         {/* Title */}
-        <span className={`flex-1 text-sm truncate ${task.status === 'DONE' ? 'line-through text-muted-foreground' : ''}`}>
+        <span className={`flex-1 text-sm truncate ${task.status === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
           {task.title}
         </span>
 
@@ -172,7 +206,7 @@ function DraggableTaskRow({
 
         {/* Hover actions */}
         <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 shrink-0 pr-1">
-          {canEdit && (
+          {canEdit && canAddSubtask && (
             <button
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
               title="Add subtask"
@@ -193,12 +227,10 @@ function DraggableTaskRow({
         </div>
       </div>
 
-      {/* Drop line: after */}
       {showAfter && (
         <div className="h-0.5 bg-primary rounded-full my-0.5" style={{ marginLeft: indent + 20, marginRight: 8 }} />
       )}
 
-      {/* Children (visible when expanded) */}
       {isExpanded && children}
     </div>
   )
@@ -221,9 +253,13 @@ export function TasksView() {
   const [filterPriority, setFilterPriority] = useState('all')
   const [filterMember,   setFilterMember]   = useState('all')
 
+  // Modals
+  const [confirmDelete,    setConfirmDelete]    = useState<{ task: Task; descCount: number } | null>(null)
+  const [confirmContainer, setConfirmContainer] = useState<Task | null>(null)
+
   // Drag state
-  const [dragId,    setDragId]    = useState<string | null>(null)
-  const [dropInfo,  setDropInfo]  = useState<DropInfo>(null)
+  const [dragId,   setDragId]   = useState<string | null>(null)
+  const [dropInfo, setDropInfo] = useState<DropInfo>(null)
   const pointerY = useRef(0)
 
   const addInputRef = useRef<HTMLInputElement>(null)
@@ -236,6 +272,21 @@ export function TasksView() {
   const getChildren = (pid: string) => tasks.filter((t) => t.parentId === pid).sort((a, b) => a.position - b.position)
   const selectedTask = tasks.find((t) => t.id === selectedId) ?? null
 
+  // ─── Helpers ────────────────────────────────────────────────────────────────
+
+  const getTaskDepth = (taskId: string): number => {
+    const t = tasks.find((x) => x.id === taskId)
+    if (!t?.parentId) return 0
+    return 1 + getTaskDepth(t.parentId)
+  }
+
+  const countDescendants = (taskId: string): number => {
+    const children = getChildren(taskId)
+    return children.length + children.reduce((sum, c) => sum + countDescendants(c.id), 0)
+  }
+
+  const isContainerTask = (taskId: string) => tasks.some((t) => t.parentId === taskId)
+
   const passesFilter = (t: Task) => {
     if (filterStatus   !== 'all' && t.status   !== filterStatus)   return false
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false
@@ -243,6 +294,8 @@ export function TasksView() {
     return true
   }
   const rootVisible = (t: Task) => passesFilter(t) || getChildren(t.id).some(passesFilter)
+
+  // ─── Add ────────────────────────────────────────────────────────────────────
 
   const startAdd = (parentId: string | 'root') => {
     setAddingTo(parentId)
@@ -267,19 +320,44 @@ export function TasksView() {
     setAddingTo(null)
   }
 
+  const handleStartAddSubtask = (task: Task) => {
+    // If already a container — just open inline add
+    if (isContainerTask(task.id)) {
+      if (!expanded.has(task.id)) toggleExpand(task.id)
+      startAdd(task.id)
+      return
+    }
+    // First subtask — show warning modal
+    setConfirmContainer(task)
+  }
+
+  const doCreateSubtask = () => {
+    if (!confirmContainer) return
+    const task = confirmContainer
+    setConfirmContainer(null)
+    if (!expanded.has(task.id)) toggleExpand(task.id)
+    startAdd(task.id)
+  }
+
+  // ─── Delete ─────────────────────────────────────────────────────────────────
+
+  const handleDelete = (task: Task) => {
+    setConfirmDelete({ task, descCount: countDescendants(task.id) })
+  }
+
+  const doDelete = () => {
+    if (!confirmDelete) return
+    deleteTask(confirmDelete.task.id)
+    if (selectedId === confirmDelete.task.id) setSelectedId(null)
+    setConfirmDelete(null)
+  }
+
   const toggleExpand = (id: string) =>
     setExpanded((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
-
-  const handleDelete = (task: Task) => {
-    const kids = getChildren(task.id).length
-    if (!confirm(`Delete "${task.title}"${kids > 0 ? ` and ${kids} subtask${kids === 1 ? '' : 's'}` : ''}?`)) return
-    deleteTask(task.id)
-    if (selectedId === task.id) setSelectedId(null)
-  }
 
   // ─── Drag helpers ───────────────────────────────────────────────────────────
 
@@ -290,9 +368,7 @@ export function TasksView() {
     return isDescendantOrSelf(ancestorId, c.parentId)
   }
 
-  const handleDragStart = (e: DragStartEvent) => {
-    setDragId(String(e.active.id))
-  }
+  const handleDragStart = (e: DragStartEvent) => { setDragId(String(e.active.id)) }
 
   const handleDragOver = (e: DragOverEvent) => {
     if (!e.over) { setDropInfo(null); return }
@@ -300,8 +376,8 @@ export function TasksView() {
     if (targetId === dragId || (dragId && isDescendantOrSelf(dragId, targetId))) {
       setDropInfo(null); return
     }
-    const rect   = e.over.rect
-    const relY   = (pointerY.current - rect.top) / rect.height
+    const rect  = e.over.rect
+    const relY  = (pointerY.current - rect.top) / rect.height
     const zone: DropZone = relY < 0.3 ? 'before' : relY > 0.7 ? 'after' : 'inside'
     setDropInfo({ id: targetId, zone })
   }
@@ -332,10 +408,13 @@ export function TasksView() {
   // ─── Recursive task renderer ─────────────────────────────────────────────
 
   const renderTask = (task: Task, depth: number): React.ReactNode => {
-    const children   = getChildren(task.id)
-    const isExpanded = expanded.has(task.id)
-    const isSelected = selectedId === task.id
+    const children    = getChildren(task.id)
+    const isExpanded  = expanded.has(task.id)
+    const isSelected  = selectedId === task.id
     const hasChildren = children.length > 0
+    const isContainer = hasChildren
+    const canAddSubtask = depth < 2  // max 3 levels (depth 0, 1, 2)
+
     if (!rootVisible(task) && depth === 0) return null
     if (depth > 0 && !passesFilter(task)) return null
 
@@ -347,12 +426,14 @@ export function TasksView() {
         isSelected={isSelected}
         isExpanded={isExpanded}
         hasChildren={hasChildren}
+        isContainer={isContainer}
         canEdit={canEdit}
+        canAddSubtask={canAddSubtask}
         dropInfo={dropInfo}
         isDragActive={!!dragId}
         onSelect={() => setSelectedId(isSelected ? null : task.id)}
         onToggleExpand={() => toggleExpand(task.id)}
-        onStartAdd={() => { if (!isExpanded) toggleExpand(task.id); startAdd(task.id) }}
+        onStartAdd={() => handleStartAddSubtask(task)}
         onDelete={() => handleDelete(task)}
       >
         {children.map((child) => renderTask(child, depth + 1))}
@@ -376,6 +457,48 @@ export function TasksView() {
       className="flex h-full overflow-hidden"
       onPointerMove={(e) => { pointerY.current = e.clientY }}
     >
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <ConfirmModal
+          title="Delete task"
+          danger
+          confirmLabel="Delete"
+          message={
+            confirmDelete.descCount > 0 ? (
+              <>
+                Delete <strong>"{confirmDelete.task.title}"</strong> and all{' '}
+                <strong>{confirmDelete.descCount} subtask{confirmDelete.descCount !== 1 ? 's' : ''}</strong>?
+                <br /><span className="text-destructive/80">This action cannot be undone.</span>
+              </>
+            ) : (
+              <>
+                Delete <strong>"{confirmDelete.task.title}"</strong>?
+                <br /><span className="text-destructive/80">This action cannot be undone.</span>
+              </>
+            )
+          }
+          onConfirm={doDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {/* Container warning modal */}
+      {confirmContainer && (
+        <ConfirmModal
+          title="Create subtask"
+          confirmLabel="Create subtask"
+          message={
+            <>
+              <strong>"{confirmContainer.title}"</strong> will become a container task.
+              <br /><br />
+              Its cost, progress and assignments will be <strong>calculated automatically</strong> as the sum of its subtasks. The task's own values will no longer be editable.
+            </>
+          }
+          onConfirm={doCreateSubtask}
+          onCancel={() => setConfirmContainer(null)}
+        />
+      )}
+
       {/* Task list */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Filter bar */}
@@ -494,6 +617,33 @@ function workingDaysBetween(startStr: string, endStr: string): number {
   return count
 }
 
+// ─── Computed container values ────────────────────────────────────────────────
+
+function computeContainerProgress(taskId: string, allTasks: Task[]): number {
+  const children = allTasks.filter((t) => t.parentId === taskId)
+  if (children.length === 0) return 0
+  const childProgresses = children.map((c) =>
+    allTasks.some((t) => t.parentId === c.id)
+      ? computeContainerProgress(c.id, allTasks)
+      : c.progress
+  )
+  return Math.round(childProgresses.reduce((s, p) => s + p, 0) / childProgresses.length)
+}
+
+function computeContainerStatus(taskId: string, allTasks: Task[]): TaskStatus {
+  const children = allTasks.filter((t) => t.parentId === taskId)
+  if (children.length === 0) return 'TODO'
+  const statuses = children.map((c) =>
+    allTasks.some((t) => t.parentId === c.id)
+      ? computeContainerStatus(c.id, allTasks)
+      : c.status
+  )
+  if (statuses.every((s) => s === 'DONE'))        return 'DONE'
+  if (statuses.some((s) => s === 'BLOCKED'))      return 'BLOCKED'
+  if (statuses.some((s) => s === 'IN_PROGRESS' || s === 'IN_REVIEW')) return 'IN_PROGRESS'
+  return 'TODO'
+}
+
 // ─── TaskPanel ────────────────────────────────────────────────────────────────
 
 function TaskPanel({
@@ -511,11 +661,14 @@ function TaskPanel({
   addTaskDependency: (taskId: string, dep: Task['dependencies'][number]) => void
   currencyLabel: string
 }) {
+  const isContainer = tasks.some((t) => t.parentId === task.id)
+  const computedProgress = isContainer ? computeContainerProgress(task.id, tasks) : task.progress
+  const computedStatus   = isContainer ? computeContainerStatus(task.id, tasks)   : task.status
+
   const [localTitle,      setLocalTitle]      = useState(task.title)
   const [localDesc,       setLocalDesc]       = useState(task.description)
   const [localFixedPrice, setLocalFixedPrice] = useState(String(task.fixedPrice ?? ''))
 
-  // Local state for per-person hour inputs (to avoid saving on every keystroke)
   type HourEntry = { est: string; actual: string }
   const initHours = () => {
     const r: Record<string, HourEntry> = {}
@@ -526,7 +679,6 @@ function TaskPanel({
   }
   const [localHours, setLocalHours] = useState<Record<string, HourEntry>>(initHours)
 
-  // Dependency form state
   const [newDepId,   setNewDepId]   = useState('')
   const [newDepType, setNewDepType] = useState<DependencyType>('FS')
   const [newDepLag,  setNewDepLag]  = useState('0')
@@ -571,7 +723,7 @@ function TaskPanel({
     if (!member) return
     const days        = workingDaysBetween(task.startDate, task.endDate)
     const hoursPerDay = member.weeklyHours / 5
-    const estimated   = Math.round(days * hoursPerDay * 2) / 2 // zaokrąglenie do 0.5h
+    const estimated   = Math.round(days * hoursPerDay * 2) / 2
     setLocalHours((prev) => ({ ...prev, [memberId]: { ...prev[memberId], est: String(estimated) } }))
     update({
       assignments: task.assignments.map((a) =>
@@ -598,11 +750,23 @@ function TaskPanel({
     <div className="w-80 border-l flex flex-col overflow-hidden bg-background shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Task details</span>
+        <div className="flex items-center gap-1.5">
+          {isContainer && <Layers className="h-3.5 w-3.5 text-muted-foreground" />}
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            {isContainer ? 'Container task' : 'Task details'}
+          </span>
+        </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Container banner */}
+      {isContainer && (
+        <div className="mx-4 mt-3 px-3 py-2 rounded-md bg-muted/60 border text-xs text-muted-foreground leading-relaxed">
+          Progress, status and assignments are <strong>calculated from subtasks</strong> and cannot be edited directly.
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
@@ -625,16 +789,22 @@ function TaskPanel({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Status</Label>
-            <Select value={task.status} disabled={!canEdit} onValueChange={(v) => update({ status: v as TaskStatus })}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            {isContainer ? (
+              <div className={`h-8 px-3 flex items-center rounded-md border text-xs font-medium ${statusCls(computedStatus)}`}>
+                {statusLabel(computedStatus)}
+              </div>
+            ) : (
+              <Select value={task.status} disabled={!canEdit} onValueChange={(v) => update({ status: v as TaskStatus })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Priority</Label>
-            <Select value={task.priority} disabled={!canEdit} onValueChange={(v) => update({ priority: v as TaskPriority })}>
+            <Select value={task.priority} disabled={!canEdit || isContainer} onValueChange={(v) => update({ priority: v as TaskPriority })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {PRIORITY_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -646,13 +816,14 @@ function TaskPanel({
         {/* Progress */}
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">
-            Progress: <span className="font-medium text-foreground">{task.progress}%</span>
+            Progress: <span className="font-medium text-foreground">{computedProgress}%</span>
+            {isContainer && <span className="ml-1 text-muted-foreground/60">(avg of subtasks)</span>}
           </Label>
           <input
             type="range" min={0} max={100} step={5}
-            value={task.progress}
-            disabled={!canProgress}
-            onChange={(e) => update({ progress: parseInt(e.target.value) })}
+            value={computedProgress}
+            disabled={!canProgress || isContainer}
+            onChange={(e) => !isContainer && update({ progress: parseInt(e.target.value) })}
             className="w-full h-2 accent-primary disabled:opacity-40"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -674,7 +845,7 @@ function TaskPanel({
           </div>
         </div>
 
-        {/* Working days info (PM only, when dates set) */}
+        {/* Working days info */}
         {isPM && task.startDate && task.endDate && (() => {
           const wdays = workingDaysBetween(task.startDate, task.endDate)
           const calDays = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000) + 1
@@ -685,8 +856,8 @@ function TaskPanel({
           )
         })()}
 
-        {/* Pricing mode */}
-        {isPM && (
+        {/* Pricing mode — hidden for containers */}
+        {isPM && !isContainer && (
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Pricing</Label>
             <div className="flex gap-4">
@@ -710,13 +881,12 @@ function TaskPanel({
           </div>
         )}
 
-        {/* Assigned members */}
-        {members.length > 0 && (
+        {/* Assigned members — hidden for containers */}
+        {members.length > 0 && !isContainer && (
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Assigned people</Label>
 
             {isPM ? (
-              /* PM: full view – checkboxes, hours, rates, costs */
               members.filter((m) => m.isActive).map((m) => {
                 const assignment = task.assignments.find((a) => a.personId === m.id)
                 const isAssigned = !!assignment
@@ -735,7 +905,6 @@ function TaskPanel({
 
                     {isAssigned && hours && (
                       <div className="px-2 pb-2 space-y-1.5">
-                        {/* Estimated hours row */}
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] text-muted-foreground w-14 shrink-0">Planned:</span>
                           <Input
@@ -756,7 +925,6 @@ function TaskPanel({
                             </button>
                           )}
                         </div>
-                        {/* Hint line: formula + cost */}
                         {(task.startDate && task.endDate || (assignment.estimatedHours > 0 && task.pricingMode === 'hourly')) && (
                           <div className="flex items-center gap-1 pl-[3.75rem]">
                             {task.startDate && task.endDate && (() => {
@@ -775,7 +943,6 @@ function TaskPanel({
                             )}
                           </div>
                         )}
-                        {/* Actual hours row */}
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] text-muted-foreground w-14 shrink-0">Actual:</span>
                           <Input
@@ -800,7 +967,6 @@ function TaskPanel({
                 )
               })
             ) : (
-              /* Team member: names only */
               task.assignments.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">No one assigned</p>
               ) : (
@@ -825,7 +991,6 @@ function TaskPanel({
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Dependencies (predecessors)</Label>
 
-            {/* Existing deps list */}
             {task.dependencies.length > 0 && (
               <div className="space-y-1">
                 {task.dependencies.map((dep) => {
@@ -852,7 +1017,6 @@ function TaskPanel({
               </div>
             )}
 
-            {/* Add new dependency */}
             {(() => {
               const available = tasks.filter(
                 (t) => t.id !== task.id && !task.dependencies.some((d) => d.taskId === t.id)

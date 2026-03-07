@@ -165,7 +165,8 @@ export function computeTaskCostTree(
 }
 
 export function computePersonCosts(tasks: Task[], members: TeamMember[], rates: Rates): PersonCost[] {
-  const excludeIds = contractorMemberIds(members)
+  const excludeIds   = contractorMemberIds(members)
+  const containerIds = new Set(tasks.filter((t) => tasks.some((o) => o.parentId === t.id)).map((t) => t.id))
   const map = new Map<string, PersonCost>()
   for (const m of members) {
     map.set(m.id, {
@@ -177,6 +178,7 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[], rates: 
   }
 
   for (const task of tasks) {
+    if (containerIds.has(task.id)) continue  // skip containers — costs come from subtasks
     if (task.pricingMode !== 'hourly') continue
     const evRatio = task.progress / 100
     for (const a of task.assignments) {
