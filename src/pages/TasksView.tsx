@@ -999,21 +999,21 @@ function TaskPanel({
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">Start date</Label>
+                  <Label className="text-xs text-muted-foreground">Start date</Label>
+                  <div className="relative">
+                    <Input type="date" className="h-8 text-xs pr-7" value={task.startDate ?? ''}
+                      disabled={!canEdit || isStartLocked}
+                      onChange={(e) => setTaskDates(task.id, e.target.value || null, task.endDate)} />
                     {isPM && canEdit && (
                       <button
                         title={task.startDateLocked ? 'Locked for team — click to unlock' : 'Click to lock start date for team'}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         onClick={() => updateTask(task.id, { startDateLocked: !task.startDateLocked })}
                       >
                         <Lock className={`h-3 w-3 ${task.startDateLocked ? 'text-amber-500' : 'opacity-30'}`} />
                       </button>
                     )}
                   </div>
-                  <Input type="date" className="h-8 text-xs" value={task.startDate ?? ''}
-                    disabled={!canEdit || isStartLocked}
-                    onChange={(e) => setTaskDates(task.id, e.target.value || null, task.endDate)} />
                   {isStartLocked && (
                     <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                       <Lock className="h-2.5 w-2.5" /> Locked by PM
