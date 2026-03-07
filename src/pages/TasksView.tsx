@@ -458,7 +458,8 @@ export function TasksView() {
         onToggleExpand={() => toggleExpand(task.id)}
         onStartAdd={() => handleStartAddSubtask(task)}
         onDelete={() => {
-          const canDeleteTask = isPM || !currentUser?.memberId || task.assignments.some((a) => a.personId === currentUser.memberId)
+          const canDeleteTask = isPM || !currentUser?.memberId ||
+            (task.assignments.length === 1 && task.assignments[0].personId === currentUser.memberId)
           if (canDeleteTask) handleDelete(task)
           else setNotOwnedTitle(task.title)
         }}
@@ -516,8 +517,8 @@ export function TasksView() {
           confirmLabel="OK"
           message={
             <>
-              You can only delete your own tasks.<br />
-              <strong>"{notOwnedTitle}"</strong> is assigned to someone else.
+              You can only delete tasks assigned solely to you.<br />
+              <strong>"{notOwnedTitle}"</strong> is assigned to multiple people or someone else.
             </>
           }
           onConfirm={() => setNotOwnedTitle(null)}
