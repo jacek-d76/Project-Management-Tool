@@ -197,6 +197,21 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[], rates: 
     }
   }
 
+  // Fixed-price DONE tasks — distribute cost proportionally to assignees
+  for (const task of tasks) {
+    if (containerIds.has(task.id)) continue
+    if (task.pricingMode !== 'fixed' || task.status !== 'DONE') continue
+    const price = task.fixedPrice ?? 0
+    if (price === 0 || task.assignments.length === 0) continue
+    const totalHours = task.assignments.reduce((s, a) => s + a.estimatedHours, 0)
+    if (totalHours === 0) continue
+    for (const a of task.assignments) {
+      const pc = map.get(a.personId)
+      if (!pc || excludeIds.has(a.personId)) continue
+      pc.actualCost += price * (a.estimatedHours / totalHours)
+    }
+  }
+
   return [...map.values()].filter((p) => p.estimatedHours > 0 || p.estimatedCost > 0)
 }
 
@@ -245,7 +260,7 @@ export function computeTotals(tree: TaskCost[], contractorCosts: ContractorCost[
   const contractorsBudget = contractorCosts.reduce((s, c) => s + c.contractPriceEur, 0)
   const budget      = tasksBudget + contractorsBudget
   const earnedValue = tree.reduce((s, t) => s + t.earnedValue, 0)
-  const actualCost  = tree.reduce((s, t) => s + t.actualCost, 0)
+  const actualCost  = tree.reduce((s, t) => s + t.actualCost, 0) + contractorsBudget
   return {
     budget,
     earnedValue,
