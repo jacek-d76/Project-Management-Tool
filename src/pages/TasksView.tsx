@@ -425,7 +425,7 @@ export function TasksView() {
     const canAddSubtask = depth < 2  // max 3 levels (depth 0, 1, 2)
 
     if (!rootVisible(task) && depth === 0) return null
-    if (depth > 0 && !passesFilter(task)) return null
+    if (depth > 0 && !passesFilter(task) && !hasVisibleDescendant(task.id)) return null
 
     return (
       <DraggableTaskRow
