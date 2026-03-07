@@ -296,7 +296,9 @@ export function TasksView() {
     if (filterMember   !== 'all' && !t.assignments.some((a) => a.personId === filterMember)) return false
     return true
   }
-  const rootVisible = (t: Task) => passesFilter(t) || getChildren(t.id).some(passesFilter)
+  const hasVisibleDescendant = (taskId: string): boolean =>
+    getChildren(taskId).some((c) => passesFilter(c) || hasVisibleDescendant(c.id))
+  const rootVisible = (t: Task) => passesFilter(t) || hasVisibleDescendant(t.id)
 
   // ─── Add ────────────────────────────────────────────────────────────────────
 
