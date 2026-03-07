@@ -76,7 +76,7 @@ function leafCosts(
   rates: Rates,
 ): { est: number; actual: number } {
   if (task.pricingMode === 'fixed') {
-    return { est: task.fixedPrice ?? 0, actual: task.fixedPrice ?? 0 }
+    return { est: task.fixedPrice ?? 0, actual: task.status === 'DONE' ? (task.fixedPrice ?? 0) : 0 }
   }
   let est = 0, actual = 0
   for (const a of task.assignments) {
