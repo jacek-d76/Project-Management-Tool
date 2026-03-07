@@ -262,6 +262,7 @@ export function TasksView() {
   // Modals
   const [confirmDelete,    setConfirmDelete]    = useState<{ task: Task; descCount: number } | null>(null)
   const [confirmContainer, setConfirmContainer] = useState<Task | null>(null)
+  const [notOwnedTitle,    setNotOwnedTitle]    = useState<string | null>(null)
 
   // Drag state
   const [dragId,   setDragId]   = useState<string | null>(null)
@@ -456,7 +457,11 @@ export function TasksView() {
         onSelect={() => setSelectedId(isSelected ? null : task.id)}
         onToggleExpand={() => toggleExpand(task.id)}
         onStartAdd={() => handleStartAddSubtask(task)}
-        onDelete={() => handleDelete(task)}
+        onDelete={() => {
+          const canDeleteTask = isPM || !currentUser?.memberId || task.assignments.some((a) => a.personId === currentUser.memberId)
+          if (canDeleteTask) handleDelete(task)
+          else setNotOwnedTitle(task.title)
+        }}
       >
         {children.map((child) => renderTask(child, depth + 1))}
         {addingTo === task.id && (
@@ -501,6 +506,22 @@ export function TasksView() {
           }
           onConfirm={doDelete}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {/* Cannot delete modal */}
+      {notOwnedTitle && (
+        <ConfirmModal
+          title="Cannot delete task"
+          confirmLabel="OK"
+          message={
+            <>
+              You can only delete your own tasks.<br />
+              <strong>"{notOwnedTitle}"</strong> is assigned to someone else.
+            </>
+          }
+          onConfirm={() => setNotOwnedTitle(null)}
+          onCancel={() => setNotOwnedTitle(null)}
         />
       )}
 
