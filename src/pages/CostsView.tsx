@@ -12,13 +12,17 @@ function fmt(eur: number, cur: DisplayCur, eurToPln: number, eurToUsd: number): 
   const val = cur === 'PLN' ? eur * eurToPln
             : cur === 'USD' ? eur * eurToUsd
             : eur
-  const n = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-  return cur === 'USD' ? `$${n}` : `${n} ${cur}`
+  const n = val.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (cur === 'USD') return `$${n}`
+  if (cur === 'EUR') return `${n}€`
+  return `${n} PLN`
 }
 
 function fmtNative(amount: number, currency: string): string {
-  const n = amount.toLocaleString('en-US', { maximumFractionDigits: 0 })
-  return currency === 'USD' ? `$${n}` : `${n} ${currency}`
+  const n = amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (currency === 'USD') return `$${n}`
+  if (currency === 'EUR') return `${n}€`
+  return `${n} ${currency}`
 }
 
 // ─── Summary cards ────────────────────────────────────────────────────────────
@@ -33,11 +37,11 @@ function StatCard({
   color?: string
 }) {
   return (
-    <div className="rounded-xl border bg-card px-5 py-4 flex flex-col gap-1">
+    <div className="rounded-xl border bg-card px-7 py-6 flex flex-col gap-1.5">
       <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</span>
-      <span className={`text-2xl font-bold tabular-nums ${color ?? ''}`}>{value}</span>
-      {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
-      <span className="text-[10px] text-muted-foreground/60 mt-1 leading-snug">{desc}</span>
+      <span className={`text-4xl font-bold tabular-nums ${color ?? ''}`}>{value}</span>
+      {sub && <span className="text-sm text-muted-foreground">{sub}</span>}
+      <span className="text-[11px] text-muted-foreground/60 mt-1 leading-snug">{desc}</span>
     </div>
   )
 }
@@ -124,11 +128,6 @@ function PhaseRow({
         {/* Budget */}
         <td className="px-3 py-2 text-right tabular-nums text-sm">
           {node.estimatedCost > 0 ? fmt(node.estimatedCost, cur, eurToPln, eurToUsd) : '—'}
-        </td>
-
-        {/* Earned value */}
-        <td className="px-3 py-2 text-right tabular-nums text-sm text-green-700 dark:text-green-400">
-          {node.earnedValue > 0 ? fmt(node.earnedValue, cur, eurToPln, eurToUsd) : '—'}
         </td>
 
         {/* Actual */}
@@ -218,19 +217,12 @@ export function CostsView() {
         </div>
 
         {/* ── Summary cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <StatCard
-            label="Total budget"
+            label="Estimated Costs"
             value={fmt(totals.budget, cur, eurToPln, eurToUsd)}
             sub={totals.contractorsBudget > 0 ? 'tasks + contracts' : undefined}
             desc="Sum of task costs (individual hourly + fixed price) and company contracts."
-          />
-          <StatCard
-            label="Earned value"
-            value={fmt(totals.earnedValue, cur, eurToPln, eurToUsd)}
-            sub={`${totals.evPct}% of budget`}
-            desc="Budget × progress %. Shows how much work has been completed in monetary terms."
-            color="text-green-600 dark:text-green-400"
           />
           <StatCard
             label="Actual cost"
@@ -238,12 +230,6 @@ export function CostsView() {
             sub={totals.actualCost > 0 ? undefined : 'No actual hours logged'}
             desc="Real cost based on actual hours logged × hourly rate. If AC > EV, the project is over budget."
             color={totals.actualCost > totals.earnedValue ? 'text-red-600' : undefined}
-          />
-          <StatCard
-            label="Remaining"
-            value={fmt(totals.remaining, cur, eurToPln, eurToUsd)}
-            sub={`${100 - totals.evPct}% of budget`}
-            desc="Budget − Earned value. Estimated cost of work still to be done."
           />
         </div>
 
@@ -356,7 +342,6 @@ export function CostsView() {
                     <th className="text-right px-3 py-2 font-medium">Est. h</th>
                     <th className="text-right px-3 py-2 font-medium hidden md:table-cell">Act. h</th>
                     <th className="text-right px-3 py-2 font-medium">Budget</th>
-                    <th className="text-right px-3 py-2 font-medium text-green-700 dark:text-green-400">Earned</th>
                     <th className="text-right px-3 py-2 font-medium hidden md:table-cell">Actual cost</th>
                   </tr>
                 </thead>
@@ -376,9 +361,6 @@ export function CostsView() {
                       <td className="px-3 py-2 text-right tabular-nums font-medium">
                         {fmt(p.estimatedCost, cur, eurToPln, eurToUsd)}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                        {fmt(p.earnedValue, cur, eurToPln, eurToUsd)}
-                      </td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground hidden md:table-cell">
                         {p.actualCost > 0 ? fmt(p.actualCost, cur, eurToPln, eurToUsd) : '—'}
                       </td>
@@ -394,9 +376,6 @@ export function CostsView() {
                     <td className="px-3 py-2 hidden md:table-cell" />
                     <td className="px-3 py-2 text-right tabular-nums">
                       {fmt(individualPersons.reduce((s, p) => s + p.estimatedCost, 0), cur, eurToPln, eurToUsd)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">
-                      {fmt(individualPersons.reduce((s, p) => s + p.earnedValue, 0), cur, eurToPln, eurToUsd)}
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell" />
                   </tr>
@@ -429,7 +408,6 @@ export function CostsView() {
                         <th className="text-center px-3 py-2 font-medium w-20">Mode</th>
                         <th className="text-left px-3 py-2 font-medium w-44">Progress</th>
                         <th className="text-right px-3 py-2 font-medium w-28">Budget</th>
-                        <th className="text-right px-3 py-2 font-medium w-28 text-green-700 dark:text-green-400">Earned</th>
                         <th className="text-right px-3 py-2 font-medium w-28">Actual cost</th>
                       </tr>
                     </thead>
@@ -450,7 +428,6 @@ export function CostsView() {
                       <tr className="bg-muted/20 border-t font-semibold text-sm">
                         <td className="px-3 py-2" colSpan={3}>Total (tasks)</td>
                         <td className="px-3 py-2 text-right tabular-nums">{fmt(totals.tasksBudget, cur, eurToPln, eurToUsd)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{fmt(totals.earnedValue, cur, eurToPln, eurToUsd)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                           {totals.actualCost > 0 ? fmt(totals.actualCost, cur, eurToPln, eurToUsd) : '—'}
                         </td>
