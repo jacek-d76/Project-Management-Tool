@@ -128,7 +128,7 @@ function DraggableTaskRow({
   isAtRisk: boolean
   assigneeNames: string
   warningText: string
-  colWidths: { assigned: number; progress: number; status: number; priority: number }
+  colWidths: { task: number; assigned: number; progress: number; status: number; priority: number }
   onSelect: () => void
   onToggleExpand: () => void
   onStartAdd: () => void
