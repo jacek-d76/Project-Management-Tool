@@ -188,8 +188,8 @@ function DraggableTaskRow({
           }
         </button>
 
-        {/* Title section — flex-1 */}
-        <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-1">
+        {/* Title section — fixed width */}
+        <div className="flex items-center gap-1.5 shrink-0 overflow-hidden" style={{ width: colWidths.task }}>
           {isContainer && <Layers className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
           <span className={`text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
             {task.title}
@@ -283,7 +283,7 @@ export function TasksView() {
   )
 
   // Column widths (resizable, persisted to localStorage)
-  const DEFAULT_COL_WIDTHS = { assigned: 112, progress: 96, status: 80, priority: 64 }
+  const DEFAULT_COL_WIDTHS = { task: 280, assigned: 120, progress: 100, status: 90, priority: 70 }
   type ColKey = keyof typeof DEFAULT_COL_WIDTHS
   const [colWidths, setColWidths] = useState<typeof DEFAULT_COL_WIDTHS>(() => {
     try {
@@ -294,7 +294,7 @@ export function TasksView() {
   const startColResize = (col: ColKey, startX: number, startW: number) => {
     const onMove = (e: MouseEvent) => {
       setColWidths((prev) => {
-        const next = { ...prev, [col]: Math.max(48, startW + e.clientX - startX) }
+        const next = { ...prev, [col]: Math.max(60, startW + e.clientX - startX) }
         localStorage.setItem('pmTaskColWidths', JSON.stringify(next))
         return next
       })
@@ -652,18 +652,28 @@ export function TasksView() {
         </div>
 
         {/* Column headers */}
-        <div className="flex items-center text-[10px] text-muted-foreground/60 uppercase tracking-wide px-3 py-2 border-b bg-muted/20">
+        <div className="flex items-center text-[10px] text-muted-foreground/60 uppercase tracking-wide px-3 py-2 border-b bg-muted/20 select-none">
           <div className="w-11 shrink-0" />
-          <div className="flex-1 min-w-0 pl-1">Task</div>
+          {/* Task column — resizable */}
+          <div className="shrink-0 relative flex items-center pl-1" style={{ width: colWidths.task }}>
+            Task
+            <div
+              className="absolute top-0 h-full z-20 flex items-center justify-center group"
+              style={{ right: -8, width: 16, cursor: 'col-resize' }}
+              onMouseDown={(e) => { e.preventDefault(); startColResize('task', e.clientX, colWidths.task) }}
+            >
+              <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors" />
+            </div>
+          </div>
           {([ ['assigned','Assigned','md'], ['progress','Progress','sm'], ['status','Status','sm'], ['priority','Priority','sm'] ] as [ColKey,string,string][]).map(([col, label, bp]) => (
-            <div key={col} className={`shrink-0 relative hidden ${bp}:flex items-center justify-center select-none`} style={{ width: colWidths[col] }}>
+            <div key={col} className={`shrink-0 relative hidden ${bp}:flex items-center justify-center`} style={{ width: colWidths[col] }}>
               {label}
-              {/* Resize handle: 1px visible separator + wide invisible grab zone */}
-              <div className="absolute right-0 top-0 h-full flex items-stretch z-10"
-                style={{ width: 12, cursor: 'col-resize' }}
-                onMouseDown={(e) => { e.preventDefault(); startColResize(col, e.clientX, colWidths[col]) }}
+              <div
+                className="absolute top-0 h-full z-20 flex items-center justify-center group"
+                style={{ right: -8, width: 16, cursor: 'col-resize' }}
+                onMouseDown={(e) => { e.preventDefault(); startColResize(col as ColKey, e.clientX, colWidths[col as ColKey]) }}
               >
-                <div className="w-px bg-border/60 self-stretch mx-auto hover:bg-primary transition-colors" />
+                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors" />
               </div>
             </div>
           ))}
