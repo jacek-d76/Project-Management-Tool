@@ -210,7 +210,7 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[], rates: 
     }
   }
 
-  return [...map.values()].filter((p) => p.estimatedHours > 0 || p.estimatedCost > 0)
+  return [...map.values()].filter((p) => p.estimatedHours > 0 || p.estimatedCost > 0 || p.actualHours > 0 || p.actualCost > 0)
 }
 
 function toEur(amount: number, currency: Currency, eurToPln: number, eurToUsd: number): number {
