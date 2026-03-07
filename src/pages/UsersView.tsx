@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, ShieldCheck, UserCog, Save } from 'lucide-react'
+import { Plus, Trash2, Pencil, ShieldCheck, UserCog, Save, ChevronDown, ChevronRight, ListTodo } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,11 +13,22 @@ import { DEFAULT_PERMISSIONS } from '@/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const PERMISSIONS_CONFIG: { key: keyof UserPermissions; label: string; description: string }[] = [
-  { key: 'canEditTasks',      label: 'Edit tasks',      description: 'Add, change status, dates, description of tasks' },
-  { key: 'canUpdateProgress', label: 'Progress %',      description: 'Update task progress slider' },
-  { key: 'canEditMilestones', label: 'Milestones',      description: 'Add and edit milestones' },
-  { key: 'canAddEvidence',    label: 'Evidence',        description: 'Delivery evidence for milestones' },
+  { key: 'canEditTasks',      label: 'Edit tasks',  description: 'Add, change status, dates, description of tasks' },
+  { key: 'canUpdateProgress', label: 'Progress %',  description: 'Update task progress slider' },
+  { key: 'canEditMilestones', label: 'Milestones',  description: 'Add and edit milestones' },
+  { key: 'canAddEvidence',    label: 'Evidence',    description: 'Delivery evidence for milestones' },
 ]
+
+const STATUS_CLS: Record<string, string> = {
+  TODO:        'bg-gray-100 text-gray-700',
+  IN_PROGRESS: 'bg-blue-100 text-blue-700',
+  IN_REVIEW:   'bg-amber-100 text-amber-700',
+  DONE:        'bg-green-100 text-green-700',
+  BLOCKED:     'bg-red-100 text-red-700',
+}
+const STATUS_LABEL: Record<string, string> = {
+  TODO: 'To do', IN_PROGRESS: 'In progress', IN_REVIEW: 'In review', DONE: 'Done', BLOCKED: 'Blocked',
+}
 
 const emptyForm = {
   name: '',
@@ -33,45 +44,47 @@ const emptyForm = {
 }
 
 export function UsersView() {
-  const { members, addMember, updateMember, deleteMember, project, contractors } = useProjectStore()
+  const { members, addMember, updateMember, deleteMember, project, contractors, tasks } = useProjectStore()
 
-  const [dirtyPerms, setDirtyPerms] = useState<Record<string, UserPermissions>>({})
-
-  const [open, setOpen] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState({ ...emptyForm, permissions: { ...DEFAULT_PERMISSIONS } })
-  const [usernameError, setUsernameError] = useState('')
+  const [dirtyPerms,      setDirtyPerms]      = useState<Record<string, UserPermissions>>({})
+  const [expandedTasksFor, setExpandedTasksFor] = useState<Set<string>>(new Set())
+  const [open,            setOpen]            = useState(false)
+  const [editId,          setEditId]          = useState<string | null>(null)
+  const [form,            setForm]            = useState({ ...emptyForm, permissions: { ...DEFAULT_PERMISSIONS } })
+  const [usernameError,   setUsernameError]   = useState('')
 
   const currencyLabel = project?.currency ?? 'EUR'
+
+  // Leaf tasks only (skip containers)
+  const containerIds = new Set(tasks.filter((t) => tasks.some((o) => o.parentId === t.id)).map((t) => t.id))
+  const leafTasks    = tasks.filter((t) => !containerIds.has(t.id))
+
+  const memberTasks = (memberId: string) =>
+    leafTasks.filter((t) => t.assignments.some((a) => a.personId === memberId))
+
+  const toggleTasksFor = (memberId: string) =>
+    setExpandedTasksFor((prev) => {
+      const next = new Set(prev)
+      next.has(memberId) ? next.delete(memberId) : next.add(memberId)
+      return next
+    })
 
   const getPerms = (m: TeamMember): UserPermissions => dirtyPerms[m.id] ?? m.permissions
 
   const togglePerm = (memberId: string, key: keyof UserPermissions) => {
     const current = dirtyPerms[memberId] ?? members.find((m) => m.id === memberId)!.permissions
-    setDirtyPerms((d) => ({
-      ...d,
-      [memberId]: { ...current, [key]: !current[key] },
-    }))
+    setDirtyPerms((d) => ({ ...d, [memberId]: { ...current, [key]: !current[key] } }))
   }
 
   const savePerms = (memberId: string) => {
     if (dirtyPerms[memberId]) {
       updateMember(memberId, { permissions: dirtyPerms[memberId] })
-      setDirtyPerms((d) => {
-        const next = { ...d }
-        delete next[memberId]
-        return next
-      })
+      setDirtyPerms((d) => { const next = { ...d }; delete next[memberId]; return next })
     }
   }
 
-  const discardPerms = (memberId: string) => {
-    setDirtyPerms((d) => {
-      const next = { ...d }
-      delete next[memberId]
-      return next
-    })
-  }
+  const discardPerms = (memberId: string) =>
+    setDirtyPerms((d) => { const next = { ...d }; delete next[memberId]; return next })
 
   const openAdd = () => {
     setEditId(null)
@@ -103,19 +116,9 @@ export function UsersView() {
     const duplicate = members.find(
       (m) => m.username.toLowerCase() === form.username.toLowerCase() && m.id !== editId
     )
-    if (duplicate) {
-      setUsernameError('This username is already taken.')
-      return
-    }
-    const memberData = {
-      ...form,
-      contractorId: form.contractorId || undefined,
-    }
-    if (editId) {
-      updateMember(editId, memberData)
-    } else {
-      addMember(memberData)
-    }
+    if (duplicate) { setUsernameError('This username is already taken.'); return }
+    const memberData = { ...form, contractorId: form.contractorId || undefined }
+    if (editId) { updateMember(editId, memberData) } else { addMember(memberData) }
     setOpen(false)
   }
 
@@ -163,9 +166,14 @@ export function UsersView() {
       ) : (
         <div className="space-y-3">
           {members.map((m) => {
-            const perms = getPerms(m)
-            const isDirty = !!dirtyPerms[m.id]
+            const perms      = getPerms(m)
+            const isDirty    = !!dirtyPerms[m.id]
             const contractor = m.contractorId ? contractors.find((c) => c.id === m.contractorId) : null
+            const mTasks     = memberTasks(m.id)
+            const totalEst   = mTasks.reduce((s, t) => s + (t.assignments.find((a) => a.personId === m.id)?.estimatedHours ?? 0), 0)
+            const totalAct   = mTasks.reduce((s, t) => s + (t.assignments.find((a) => a.personId === m.id)?.actualHours ?? 0), 0)
+            const isTasksOpen = expandedTasksFor.has(m.id)
+
             return (
               <Card key={m.id} className={!m.isActive ? 'opacity-50' : isDirty ? 'border-primary/50' : ''}>
                 <CardContent className="py-3 space-y-3">
@@ -190,6 +198,19 @@ export function UsersView() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      {/* Task list toggle */}
+                      <button
+                        onClick={() => toggleTasksFor(m.id)}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted transition-colors"
+                        title="Show assigned tasks"
+                      >
+                        <ListTodo className="h-3.5 w-3.5" />
+                        <span>{mTasks.length}</span>
+                        {isTasksOpen
+                          ? <ChevronDown  className="h-3 w-3" />
+                          : <ChevronRight className="h-3 w-3" />
+                        }
+                      </button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(m)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -202,6 +223,64 @@ export function UsersView() {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Task list (expanded) */}
+                  {isTasksOpen && (
+                    <div className="border-t pt-3">
+                      {mTasks.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">No tasks assigned.</p>
+                      ) : (
+                        <>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-muted-foreground border-b">
+                                <th className="text-left py-1 pr-3 font-medium">Task</th>
+                                <th className="text-left py-1 pr-3 font-medium w-24">Status</th>
+                                <th className="text-right py-1 pr-3 font-medium w-16">Planned</th>
+                                <th className="text-right py-1 font-medium w-16">Actual</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {mTasks.map((t) => {
+                                const a = t.assignments.find((x) => x.personId === m.id)!
+                                return (
+                                  <tr key={t.id} className="border-b border-border/40 hover:bg-muted/30">
+                                    <td className="py-1.5 pr-3 truncate max-w-0 w-full">
+                                      <span className={t.status === 'DONE' ? 'line-through text-muted-foreground' : ''}>
+                                        {t.title}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 pr-3">
+                                      <span className={`px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLS[t.status] ?? ''}`}>
+                                        {STATUS_LABEL[t.status] ?? t.status}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 pr-3 text-right tabular-nums">
+                                      {a.estimatedHours > 0 ? `${a.estimatedHours}h` : '—'}
+                                    </td>
+                                    <td className="py-1.5 text-right tabular-nums">
+                                      {a.actualHours != null ? `${a.actualHours}h` : '—'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                            <tfoot>
+                              <tr className="text-muted-foreground font-medium">
+                                <td colSpan={2} className="pt-2 text-xs">Total</td>
+                                <td className="pt-2 pr-3 text-right tabular-nums text-foreground">
+                                  {totalEst > 0 ? `${totalEst}h` : '—'}
+                                </td>
+                                <td className="pt-2 text-right tabular-nums text-foreground">
+                                  {totalAct > 0 ? `${totalAct}h` : '—'}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   {/* Row 2: permission checkboxes */}
                   <div className="flex items-center gap-1 flex-wrap">
@@ -223,19 +302,11 @@ export function UsersView() {
 
                     {isDirty && (
                       <div className="flex gap-1 ml-auto">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-xs text-muted-foreground"
-                          onClick={() => discardPerms(m.id)}
-                        >
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
+                          onClick={() => discardPerms(m.id)}>
                           Cancel
                         </Button>
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 text-xs gap-1"
-                          onClick={() => savePerms(m.id)}
-                        >
+                        <Button size="sm" className="h-7 px-3 text-xs gap-1" onClick={() => savePerms(m.id)}>
                           <Save className="h-3 w-3" />
                           Save
                         </Button>
@@ -315,9 +386,7 @@ export function UsersView() {
                   value={form.hourlyRateCurrency}
                   onValueChange={(v) => setForm({ ...form, hourlyRateCurrency: v as Currency })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="EUR">EUR</SelectItem>
                     <SelectItem value="PLN">PLN</SelectItem>

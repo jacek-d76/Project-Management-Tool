@@ -240,8 +240,9 @@ function DraggableTaskRow({
 
 export function TasksView() {
   const { project, tasks, members, addTask, updateTask, deleteTask, moveTask, setTaskDates, addTaskDependency } = useProjectStore()
-  const isPM    = useSessionStore((s) => s.isPM())
-  const can     = useSessionStore((s) => s.can)
+  const isPM       = useSessionStore((s) => s.isPM())
+  const can        = useSessionStore((s) => s.can)
+  const currentUser = useSessionStore((s) => s.currentUser)
   const canEdit     = isPM || can('canEditTasks')
   const canProgress = isPM || can('canUpdateProgress')
 
@@ -251,7 +252,9 @@ export function TasksView() {
   const [newTitle,       setNewTitle]       = useState('')
   const [filterStatus,   setFilterStatus]   = useState('all')
   const [filterPriority, setFilterPriority] = useState('all')
-  const [filterMember,   setFilterMember]   = useState('all')
+  const [filterMember,   setFilterMember]   = useState<string>(
+    () => !isPM && currentUser?.memberId ? currentUser.memberId : 'all'
+  )
 
   // Modals
   const [confirmDelete,    setConfirmDelete]    = useState<{ task: Task; descCount: number } | null>(null)
@@ -517,7 +520,7 @@ export function TasksView() {
               {PRIORITY_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          {members.length > 0 && (
+          {isPM && members.length > 0 && (
             <Select value={filterMember} onValueChange={setFilterMember}>
               <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
