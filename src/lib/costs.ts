@@ -197,18 +197,16 @@ export function computePersonCosts(tasks: Task[], members: TeamMember[], rates: 
     }
   }
 
-  // Fixed-price DONE tasks — distribute cost proportionally to assignees
+  // Fixed-price DONE tasks — full fixedPrice as actual cost for each assignee
   for (const task of tasks) {
     if (containerIds.has(task.id)) continue
     if (task.pricingMode !== 'fixed' || task.status !== 'DONE') continue
     const price = task.fixedPrice ?? 0
-    if (price === 0 || task.assignments.length === 0) continue
-    const totalHours = task.assignments.reduce((s, a) => s + a.estimatedHours, 0)
-    if (totalHours === 0) continue
+    if (price === 0) continue
     for (const a of task.assignments) {
       const pc = map.get(a.personId)
       if (!pc || excludeIds.has(a.personId)) continue
-      pc.actualCost += price * (a.estimatedHours / totalHours)
+      pc.actualCost += price
     }
   }
 
