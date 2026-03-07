@@ -1087,8 +1087,8 @@ function TaskPanel({
                       <Select value={newDepType} onValueChange={(v) => setNewDepType(v as DependencyType)}>
                         <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="FS">FS</SelectItem>
-                          <SelectItem value="SS">SS</SelectItem>
+                          <SelectItem value="FS" title="Finish-to-Start: B starts after A finishes">FS – kończy→startuje</SelectItem>
+                          <SelectItem value="SS" title="Start-to-Start: B starts after A starts">SS – startuje→startuje</SelectItem>
                         </SelectContent>
                       </Select>
                       <Input
