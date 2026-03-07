@@ -870,7 +870,7 @@ function TaskPanel({
         </div>
 
         {/* Working days info */}
-        {isPM && task.startDate && task.endDate && (() => {
+        {task.startDate && task.endDate && (() => {
           const wdays = workingDaysBetween(task.startDate, task.endDate)
           const calDays = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000) + 1
           return (
