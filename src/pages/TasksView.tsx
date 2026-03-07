@@ -715,7 +715,7 @@ export function TasksView() {
       </div>
 
       {/* Task panel */}
-      {selectedTask && (
+      {selectedTask ? (
         <TaskPanel
           key={selectedTask.id}
           task={selectedTask}
@@ -731,6 +731,14 @@ export function TasksView() {
           addTaskDependency={addTaskDependency}
           currencyLabel={project?.currency ?? 'EUR'}
         />
+      ) : (
+        <div className="w-80 border-l flex flex-col items-center justify-center shrink-0 bg-background text-center p-6 gap-3 text-muted-foreground">
+          <ListTodo className="h-10 w-10 opacity-20" />
+          <div>
+            <p className="text-sm font-medium">No task selected</p>
+            <p className="text-xs mt-1 opacity-70">Click a task to view its details</p>
+          </div>
+        </div>
       )}
     </div>
   )
