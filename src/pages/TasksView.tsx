@@ -652,16 +652,19 @@ export function TasksView() {
         </div>
 
         {/* Column headers */}
-        <div className="flex items-center text-[10px] text-muted-foreground/60 uppercase tracking-wide px-3 py-1 border-b bg-muted/20">
+        <div className="flex items-center text-[10px] text-muted-foreground/60 uppercase tracking-wide px-3 py-2 border-b bg-muted/20">
           <div className="w-11 shrink-0" />
           <div className="flex-1 min-w-0 pl-1">Task</div>
           {([ ['assigned','Assigned','md'], ['progress','Progress','sm'], ['status','Status','sm'], ['priority','Priority','sm'] ] as [ColKey,string,string][]).map(([col, label, bp]) => (
             <div key={col} className={`shrink-0 relative hidden ${bp}:flex items-center justify-center select-none`} style={{ width: colWidths[col] }}>
               {label}
-              <div
-                className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 z-10"
+              {/* Resize handle: 1px visible separator + wide invisible grab zone */}
+              <div className="absolute right-0 top-0 h-full flex items-stretch z-10"
+                style={{ width: 12, cursor: 'col-resize' }}
                 onMouseDown={(e) => { e.preventDefault(); startColResize(col, e.clientX, colWidths[col]) }}
-              />
+              >
+                <div className="w-px bg-border/60 self-stretch mx-auto hover:bg-primary transition-colors" />
+              </div>
             </div>
           ))}
           <div className="w-14 shrink-0" />
