@@ -192,7 +192,6 @@ function DraggableTaskRow({
           <span className={`text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
             {task.title}
           </span>
-          {isAtRisk && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
         </div>
 
         {/* Assignees — fixed width */}
@@ -208,6 +207,13 @@ function DraggableTaskRow({
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
           </div>
           <span className="text-[10px] text-muted-foreground w-6 text-right shrink-0">{displayProgress}%</span>
+        </div>
+
+        {/* Warnings — fixed width */}
+        <div className="w-8 shrink-0 flex justify-center">
+          {isAtRisk && (
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" title="Subtask exceeds deadline" />
+          )}
         </div>
 
         {/* Status badge — fixed width */}
@@ -603,11 +609,11 @@ export function TasksView() {
             </Select>
           )}
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" className="h-8 px-2" title="Collapse all" onClick={collapseAll}>
-            <ChevronsUp className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-8 px-2 gap-1 text-xs" onClick={collapseAll}>
+            <ChevronsUp className="h-3.5 w-3.5" />Zwiń
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 px-2" title="Expand all" onClick={expandAll}>
-            <ChevronsDown className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-8 px-2 gap-1 text-xs" onClick={expandAll}>
+            <ChevronsDown className="h-3.5 w-3.5" />Rozwiń
           </Button>
           {canEdit && (
             <Button size="sm" className="h-8" onClick={() => startAdd('root')}>
@@ -623,6 +629,7 @@ export function TasksView() {
           <div className="flex-1 min-w-0 pl-1">Task</div>
           <div className="w-28 shrink-0 hidden md:block">Assigned</div>
           <div className="w-24 shrink-0 hidden sm:block">Progress</div>
+          <div className="w-8 shrink-0 text-center">!</div>
           <div className="w-20 shrink-0 hidden sm:block text-center">Status</div>
           <div className="w-16 shrink-0 hidden sm:block text-center">Priority</div>
           <div className="w-14 shrink-0" />
