@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import type { UserRole, SessionUser, UserPermissions } from '@/types'
 import { useProjectStore } from './projectStore'
+import { recordLogin, recordLogout } from '@/lib/activityLog'
 
 const PM_PASSWORD = import.meta.env.VITE_PM_PASSWORD || 'pm2026'
 const PM_USERNAME = 'pm'
@@ -40,6 +41,7 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
       }
       sessionStorage.setItem('pm-session', JSON.stringify(user))
       set({ currentUser: user, role: 'pm' })
+      recordLogin(PM_USERNAME, 'Project Manager', 'pm')
       return true
     }
 
@@ -58,6 +60,7 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
       }
       sessionStorage.setItem('pm-session', JSON.stringify(user))
       set({ currentUser: user, role: 'member' })
+      recordLogin(member.username, member.name, 'member')
       return true
     }
 
@@ -65,6 +68,8 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   },
 
   logout: () => {
+    const user = get().currentUser
+    if (user) recordLogout(user.username, user.name, user.role as 'pm' | 'member')
     sessionStorage.removeItem('pm-session')
     set({ currentUser: null, role: null })
   },

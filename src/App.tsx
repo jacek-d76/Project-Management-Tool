@@ -10,6 +10,7 @@ import { GanttView } from '@/pages/GanttView'
 import { WorkloadView } from '@/pages/WorkloadView'
 import { CostsView } from '@/pages/CostsView'
 import { ContractorsView } from '@/pages/ContractorsView'
+import { StatisticsView } from '@/pages/StatisticsView'
 import { useSessionStore } from '@/store/sessionStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -100,6 +101,15 @@ export default function App() {
               element={
                 <RequirePM>
                   <UsersView />
+                </RequirePM>
+              }
+            />
+            {/* Statistics – PM only, no project required */}
+            <Route
+              path="/statistics"
+              element={
+                <RequirePM>
+                  <StatisticsView />
                 </RequirePM>
               }
             />
