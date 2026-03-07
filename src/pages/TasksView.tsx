@@ -212,7 +212,7 @@ function DraggableTaskRow({
         {/* Warnings — fixed width */}
         <div className="w-8 shrink-0 flex justify-center">
           {isAtRisk && (
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" title="Subtask exceeds deadline" />
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
           )}
         </div>
 
