@@ -193,7 +193,11 @@ function DraggableTaskRow({
           <span className={`text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
             {task.title}
           </span>
-          {isAtRisk && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
+          {isAtRisk && (
+            <span title={warningText} className="shrink-0 cursor-help">
+              <AlertTriangle className="h-3 w-3 text-amber-500" />
+            </span>
+          )}
         </div>
 
         {/* Assignees — fixed width */}
@@ -209,16 +213,6 @@ function DraggableTaskRow({
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
           </div>
           <span className="text-[10px] text-muted-foreground w-6 text-right shrink-0">{displayProgress}%</span>
-        </div>
-
-        {/* Warnings — fixed width */}
-        <div className="w-44 shrink-0 hidden lg:flex items-center gap-1 min-w-0">
-          {warningText && (
-            <>
-              <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-              <span className="text-[11px] text-amber-700 dark:text-amber-400 truncate">{warningText}</span>
-            </>
-          )}
         </div>
 
         {/* Status badge — fixed width */}
@@ -636,7 +630,6 @@ export function TasksView() {
           <div className="flex-1 min-w-0 pl-1">Task</div>
           <div className="w-28 shrink-0 hidden md:block">Assigned</div>
           <div className="w-24 shrink-0 hidden sm:block">Progress</div>
-          <div className="w-44 shrink-0 hidden lg:block">Warnings</div>
           <div className="w-20 shrink-0 hidden sm:block text-center">Status</div>
           <div className="w-16 shrink-0 hidden sm:block text-center">Priority</div>
           <div className="w-14 shrink-0" />
