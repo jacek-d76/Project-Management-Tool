@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Fragment, type ReactNode, type RefObject, type CSSProperties } from 'react'
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   PointerSensor, useSensor, useSensors,
@@ -48,7 +48,7 @@ function ConfirmModal({
   title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel,
 }: {
   title: string
-  message: React.ReactNode
+  message: ReactNode
   confirmLabel?: string
   danger?: boolean
   onConfirm: () => void
@@ -70,48 +70,53 @@ function ConfirmModal({
   )
 }
 
-// ─── InlineAdd ────────────────────────────────────────────────────────────────
+// ─── InlineAddRow ─────────────────────────────────────────────────────────────
 
-function InlineAdd({
+function InlineAddRow({
   parentId, depth, value, inputRef, onChange, onConfirm, onCancel,
 }: {
   parentId: string | null
   depth: number
   value: string
-  inputRef: React.RefObject<HTMLInputElement>
+  inputRef: RefObject<HTMLInputElement>
   onChange: (v: string) => void
   onConfirm: (parentId: string | null) => void
   onCancel: () => void
 }) {
   return (
-    <div className="flex items-center gap-2 py-1.5" style={{ paddingLeft: `${depth * 20 + 28}px` }}>
-      <Input
-        ref={inputRef}
-        className="h-7 text-sm"
-        placeholder="Task name... (Enter to add)"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter')  onConfirm(parentId)
-          if (e.key === 'Escape') onCancel()
-        }}
-        onBlur={() => setTimeout(() => onCancel(), 150)}
-      />
-      <Button size="sm" className="h-7 px-2 shrink-0" onMouseDown={() => onConfirm(parentId)}>Add</Button>
-      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onMouseDown={() => onCancel()}>
-        <X className="h-3 w-3" />
-      </Button>
-    </div>
+    <tr>
+      <td style={{ padding: 0 }} />
+      <td colSpan={5} style={{ paddingTop: 4, paddingBottom: 4, paddingLeft: depth * 20 }}>
+        <div className="flex items-center gap-2">
+          <Input
+            ref={inputRef}
+            className="h-7 text-sm"
+            placeholder="Task name… (Enter to add)"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter')  onConfirm(parentId)
+              if (e.key === 'Escape') onCancel()
+            }}
+            onBlur={() => setTimeout(() => onCancel(), 150)}
+          />
+          <Button size="sm" className="h-7 px-2 shrink-0" onMouseDown={() => onConfirm(parentId)}>Add</Button>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onMouseDown={() => onCancel()}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      </td>
+      <td style={{ padding: 0 }} />
+    </tr>
   )
 }
 
-// ─── DraggableTaskRow ────────────────────────────────────────────────────────
+// ─── DraggableTaskRow ─────────────────────────────────────────────────────────
 
 function DraggableTaskRow({
   task, depth, isSelected, isExpanded, hasChildren, isContainer, canEdit, canAddSubtask,
-  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk, assigneeNames, warningText, colWidths,
+  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk, assigneeNames, warningText,
   onSelect, onToggleExpand, onStartAdd, onDelete,
-  children,
 }: {
   task: Task
   depth: number
@@ -128,12 +133,10 @@ function DraggableTaskRow({
   isAtRisk: boolean
   assigneeNames: string
   warningText: string
-  colWidths: { task: number; assigned: number; progress: number; status: number; priority: number }
   onSelect: () => void
   onToggleExpand: () => void
   onStartAdd: () => void
   onDelete: () => void
-  children?: React.ReactNode
 }) {
   const { setNodeRef: setDropRef } = useDroppable({ id: task.id })
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: task.id })
@@ -141,124 +144,143 @@ function DraggableTaskRow({
   const showBefore = dropInfo?.id === task.id && dropInfo.zone === 'before'
   const showAfter  = dropInfo?.id === task.id && dropInfo.zone === 'after'
   const showInside = dropInfo?.id === task.id && dropInfo.zone === 'inside'
-  const indent = depth * 20 + 8
+  const indent     = depth * 20
 
   return (
-    <div>
+    <>
       {showBefore && (
-        <div className="h-0.5 bg-primary rounded-full my-0.5" style={{ marginLeft: indent + 20, marginRight: 8 }} />
+        <tr aria-hidden style={{ height: 0 }}>
+          <td colSpan={7} style={{ padding: 0 }}>
+            <div className="h-0.5 bg-primary mx-2" />
+          </td>
+        </tr>
       )}
 
-      <div
+      <tr
         ref={setDropRef}
         className={[
-          'group flex items-center gap-1 rounded-md py-1 cursor-pointer transition-colors',
+          'group cursor-pointer transition-colors',
           isDragging ? 'opacity-30' : '',
-          isSelected ? 'bg-accent border border-primary/30' : 'hover:bg-accent/50',
-          showInside ? 'ring-2 ring-primary ring-inset rounded-md' : '',
+          isSelected  ? 'bg-accent'      : 'hover:bg-accent/50',
+          showInside  ? 'bg-primary/10'  : '',
         ].join(' ')}
-        style={{ paddingLeft: indent }}
         onClick={() => !isDragActive && onSelect()}
       >
-        {/* Drag handle */}
-        {canEdit ? (
-          <div
-            ref={setDragRef}
-            {...attributes}
-            {...listeners}
-            className="h-5 w-5 shrink-0 flex items-center justify-center opacity-0 group-hover:opacity-40 hover:!opacity-100 cursor-grab active:cursor-grabbing touch-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+        {/* Col 0: drag handle + expand toggle */}
+        <td style={{ verticalAlign: 'middle', padding: '2px 0 2px 4px', width: 44 }}>
+          <div className="flex items-center">
+            {canEdit ? (
+              <div
+                ref={setDragRef}
+                {...attributes}
+                {...listeners}
+                className="h-5 w-5 shrink-0 flex items-center justify-center opacity-0 group-hover:opacity-40 hover:!opacity-100 cursor-grab active:cursor-grabbing touch-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="h-5 w-5 shrink-0" />
+            )}
+            <button
+              className="h-5 w-5 shrink-0 flex items-center justify-center rounded hover:bg-muted"
+              onClick={(e) => { e.stopPropagation(); if (hasChildren) onToggleExpand() }}
+            >
+              {hasChildren
+                ? isExpanded
+                  ? <ChevronDown  className="h-3.5 w-3.5 text-muted-foreground" />
+                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                : <span className="h-3.5 w-3.5 block" />
+              }
+            </button>
           </div>
-        ) : (
-          <div className="h-5 w-5 shrink-0" />
-        )}
+        </td>
 
-        {/* Expand toggle */}
-        <button
-          className="h-5 w-5 shrink-0 flex items-center justify-center rounded hover:bg-muted"
-          onClick={(e) => { e.stopPropagation(); if (hasChildren) onToggleExpand() }}
-        >
-          {hasChildren
-            ? isExpanded
-              ? <ChevronDown  className="h-3.5 w-3.5 text-muted-foreground" />
-              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            : <span className="h-3.5 w-3.5 block" />
-          }
-        </button>
-
-        {/* Title section — fixed width */}
-        <div className="flex items-center gap-1.5 shrink-0 overflow-hidden" style={{ width: colWidths.task }}>
-          {isContainer && <Layers className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
-          <span className={`text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
-            {task.title}
-          </span>
-          {isAtRisk && (
-            <span title={warningText} className="shrink-0 cursor-help">
-              <AlertTriangle className="h-3 w-3 text-amber-500" />
+        {/* Col 1: Task name */}
+        <td style={{ verticalAlign: 'middle', padding: '2px 4px 2px 0', overflow: 'hidden' }}>
+          <div className="flex items-center gap-1.5" style={{ paddingLeft: indent }}>
+            {isContainer && <Layers className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
+            <span
+              className={[
+                'text-sm truncate min-w-0',
+                displayStatus === 'DONE' ? 'line-through text-muted-foreground' : '',
+                isContainer ? 'font-medium' : '',
+              ].join(' ')}
+            >
+              {task.title}
             </span>
-          )}
-        </div>
+            {isAtRisk && (
+              <span title={warningText} className="shrink-0 cursor-help">
+                <AlertTriangle className="h-3 w-3 text-amber-500" />
+              </span>
+            )}
+          </div>
+        </td>
 
-        {/* Assignees */}
-        <div className="shrink-0 hidden md:block overflow-hidden" style={{ width: colWidths.assigned }}>
+        {/* Col 2: Assignees */}
+        <td style={{ verticalAlign: 'middle', padding: '2px 4px', overflow: 'hidden' }}>
           <span className="text-xs text-muted-foreground truncate block" title={assigneeNames}>
             {assigneeNames || <span className="opacity-30">—</span>}
           </span>
-        </div>
+        </td>
 
-        {/* Progress */}
-        <div className="shrink-0 hidden sm:flex items-center gap-1.5 overflow-hidden" style={{ width: colWidths.progress }}>
-          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
+        {/* Col 3: Progress */}
+        <td style={{ verticalAlign: 'middle', padding: '2px 8px 2px 4px' }}>
+          <div className="flex items-center gap-1.5">
+            <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden min-w-0">
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
+            </div>
+            <span className="text-[10px] text-muted-foreground w-6 text-right shrink-0">{displayProgress}%</span>
           </div>
-          <span className="text-[10px] text-muted-foreground w-6 text-right shrink-0">{displayProgress}%</span>
-        </div>
+        </td>
 
-        {/* Status badge */}
-        <div className="shrink-0 hidden sm:flex justify-center overflow-hidden" style={{ width: colWidths.status }}>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(displayStatus)}`}>
+        {/* Col 4: Status */}
+        <td style={{ verticalAlign: 'middle', padding: '2px 4px', textAlign: 'center' }}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap ${statusCls(displayStatus)}`}>
             {statusLabel(displayStatus)}
           </span>
-        </div>
+        </td>
 
-        {/* Priority badge */}
-        <div className="shrink-0 hidden sm:flex justify-center overflow-hidden" style={{ width: colWidths.priority }}>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityCls(task.priority)}`}>
+        {/* Col 5: Priority */}
+        <td style={{ verticalAlign: 'middle', padding: '2px 4px', textAlign: 'center' }}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap ${priorityCls(task.priority)}`}>
             {priorityLabel(task.priority)}
           </span>
-        </div>
+        </td>
 
-        {/* Hover actions */}
-        <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 shrink-0 pr-1">
-          {canEdit && canAddSubtask && (
-            <button
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-              title="Add subtask"
-              onClick={(e) => { e.stopPropagation(); onStartAdd() }}
-            >
-              <Plus className="h-3 w-3" />
-            </button>
-          )}
-          {canEdit && (
-            <button
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-destructive/60 hover:text-destructive"
-              title="Delete"
-              onClick={(e) => { e.stopPropagation(); onDelete() }}
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-      </div>
+        {/* Col 6: Actions */}
+        <td style={{ verticalAlign: 'middle', padding: '2px 4px', textAlign: 'right', width: 56 }}>
+          <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 justify-end">
+            {canEdit && canAddSubtask && (
+              <button
+                className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+                title="Add subtask"
+                onClick={(e) => { e.stopPropagation(); onStartAdd() }}
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            )}
+            {canEdit && (
+              <button
+                className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-destructive/60 hover:text-destructive"
+                title="Delete"
+                onClick={(e) => { e.stopPropagation(); onDelete() }}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
 
       {showAfter && (
-        <div className="h-0.5 bg-primary rounded-full my-0.5" style={{ marginLeft: indent + 20, marginRight: 8 }} />
+        <tr aria-hidden style={{ height: 0 }}>
+          <td colSpan={7} style={{ padding: 0 }}>
+            <div className="h-0.5 bg-primary mx-2" />
+          </td>
+        </tr>
       )}
-
-      {isExpanded && children}
-    </div>
+    </>
   )
 }
 
@@ -266,8 +288,8 @@ function DraggableTaskRow({
 
 export function TasksView() {
   const { project, tasks, members, addTask, updateTask, deleteTask, moveTask, setTaskDates, addTaskDependency } = useProjectStore()
-  const isPM       = useSessionStore((s) => s.isPM())
-  const can        = useSessionStore((s) => s.can)
+  const isPM        = useSessionStore((s) => s.isPM())
+  const can         = useSessionStore((s) => s.can)
   const currentUser = useSessionStore((s) => s.currentUser)
   const canEdit     = isPM || can('canEditTasks')
   const canProgress = isPM || can('canUpdateProgress')
@@ -282,8 +304,8 @@ export function TasksView() {
     () => !isPM && currentUser?.memberId ? currentUser.memberId : 'all'
   )
 
-  // Column widths (resizable, persisted to localStorage)
-  const DEFAULT_COL_WIDTHS = { task: 280, assigned: 120, progress: 100, status: 90, priority: 70 }
+  // ─── Column widths (resizable, persisted) ───────────────────────────────────
+  const DEFAULT_COL_WIDTHS = { task: 280, assigned: 130, progress: 110, status: 100, priority: 80 }
   type ColKey = keyof typeof DEFAULT_COL_WIDTHS
   const [colWidths, setColWidths] = useState<typeof DEFAULT_COL_WIDTHS>(() => {
     try {
@@ -291,6 +313,7 @@ export function TasksView() {
       return saved ? { ...DEFAULT_COL_WIDTHS, ...JSON.parse(saved) } : DEFAULT_COL_WIDTHS
     } catch { return DEFAULT_COL_WIDTHS }
   })
+
   const startColResize = (col: ColKey, startX: number, startW: number) => {
     const onMove = (e: MouseEvent) => {
       setColWidths((prev) => {
@@ -301,11 +324,22 @@ export function TasksView() {
     }
     const onUp = () => {
       window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('mouseup',   onUp)
     }
     window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    window.addEventListener('mouseup',   onUp)
   }
+
+  // Resize handle component (used inside <th>)
+  const ResizeHandle = ({ col }: { col: ColKey }) => (
+    <div
+      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 20 }}
+      className="flex items-center justify-center group/rh select-none"
+      onMouseDown={(e) => { e.preventDefault(); startColResize(col, e.clientX, colWidths[col]) }}
+    >
+      <div className="w-px h-full bg-border group-hover/rh:bg-primary transition-colors" />
+    </div>
+  )
 
   // Modals
   const [confirmDelete,    setConfirmDelete]    = useState<{ task: Task; descCount: number } | null>(null)
@@ -364,7 +398,6 @@ export function TasksView() {
     if (!newTitle.trim() || !project) { setAddingTo(null); return }
     const siblings = parentId ? getChildren(parentId) : rootTasks
     const position = siblings.length > 0 ? Math.max(...siblings.map((t) => t.position)) + 1 : 0
-    // Auto-assign member to their own task so it stays visible in the filter
     const autoAssignments = (!isPM && currentUser?.memberId)
       ? [{ personId: currentUser.memberId, estimatedHours: 0, actualHours: null }]
       : []
@@ -384,20 +417,17 @@ export function TasksView() {
     })
     setNewTitle('')
     setAddingTo(null)
-    // Auto-open panel for team members so they can set planned hours immediately
     if (!isPM && currentUser?.memberId) {
       setSelectedId(newId)
     }
   }
 
   const handleStartAddSubtask = (task: Task) => {
-    // If already a container — just open inline add
     if (isContainerTask(task.id)) {
       if (!expanded.has(task.id)) toggleExpand(task.id)
       startAdd(task.id)
       return
     }
-    // First subtask — show warning modal
     setConfirmContainer(task)
   }
 
@@ -446,7 +476,7 @@ export function TasksView() {
     if (targetId === dragId || (dragId && isDescendantOrSelf(dragId, targetId))) {
       setDropInfo(null); return
     }
-    const rect  = e.over.rect
+    const rect = e.over.rect
     const relY  = (pointerY.current - rect.top) / rect.height
     const zone: DropZone = relY < 0.3 ? 'before' : relY > 0.7 ? 'after' : 'inside'
     setDropInfo({ id: targetId, zone })
@@ -481,15 +511,15 @@ export function TasksView() {
   }
   const collapseAll = () => setExpanded(new Set())
 
-  // ─── Recursive task renderer ─────────────────────────────────────────────
+  // ─── Recursive task renderer (returns <tr> fragments) ───────────────────────
 
-  const renderTask = (task: Task, depth: number): React.ReactNode => {
+  const renderTask = (task: Task, depth: number): ReactNode => {
     const children    = getChildren(task.id)
     const isExpanded  = expanded.has(task.id)
     const isSelected  = selectedId === task.id
     const hasChildren = children.length > 0
     const isContainer = hasChildren
-    const canAddSubtask = depth < 2  // max 3 levels (depth 0, 1, 2)
+    const canAddSubtask = depth < 2
     const displayProgress = isContainer ? computeContainerProgress(task.id, tasks) : task.progress
     const displayStatus   = isContainer ? computeContainerStatus(task.id, tasks)   : task.status
     const isAtRisk        = isContainer && hasEndDateOverflow(task.id, tasks)
@@ -502,47 +532,68 @@ export function TasksView() {
     if (depth > 0 && !passesFilter(task) && !hasVisibleDescendant(task.id)) return null
 
     return (
-      <DraggableTaskRow
-        key={task.id}
-        task={task}
-        depth={depth}
-        isSelected={isSelected}
-        isExpanded={isExpanded}
-        hasChildren={hasChildren}
-        isContainer={isContainer}
-        canEdit={canEdit}
-        canAddSubtask={canAddSubtask}
-        dropInfo={dropInfo}
-        isDragActive={!!dragId}
-        displayProgress={displayProgress}
-        displayStatus={displayStatus}
-        isAtRisk={isAtRisk}
-        assigneeNames={assigneeNames}
-        warningText={warningText}
-        colWidths={colWidths}
-        onSelect={() => setSelectedId(isSelected ? null : task.id)}
-        onToggleExpand={() => toggleExpand(task.id)}
-        onStartAdd={() => handleStartAddSubtask(task)}
-        onDelete={() => {
-          const canDeleteTask = isPM || !currentUser?.memberId ||
-            (task.assignments.length === 1 && task.assignments[0].personId === currentUser.memberId)
-          if (canDeleteTask) handleDelete(task)
-          else setNotOwnedTitle(task.title)
-        }}
-      >
-        {children.map((child) => renderTask(child, depth + 1))}
-        {addingTo === task.id && (
-          <InlineAdd
+      <Fragment key={task.id}>
+        <DraggableTaskRow
+          task={task}
+          depth={depth}
+          isSelected={isSelected}
+          isExpanded={isExpanded}
+          hasChildren={hasChildren}
+          isContainer={isContainer}
+          canEdit={canEdit}
+          canAddSubtask={canAddSubtask}
+          dropInfo={dropInfo}
+          isDragActive={!!dragId}
+          displayProgress={displayProgress}
+          displayStatus={displayStatus}
+          isAtRisk={isAtRisk}
+          assigneeNames={assigneeNames}
+          warningText={warningText}
+          onSelect={() => setSelectedId(isSelected ? null : task.id)}
+          onToggleExpand={() => toggleExpand(task.id)}
+          onStartAdd={() => handleStartAddSubtask(task)}
+          onDelete={() => {
+            const canDeleteTask = isPM || !currentUser?.memberId ||
+              (task.assignments.length === 1 && task.assignments[0].personId === currentUser.memberId)
+            if (canDeleteTask) handleDelete(task)
+            else setNotOwnedTitle(task.title)
+          }}
+        />
+        {isExpanded && children.map((child) => renderTask(child, depth + 1))}
+        {isExpanded && addingTo === task.id && (
+          <InlineAddRow
             parentId={task.id} depth={depth + 1}
             value={newTitle} inputRef={addInputRef}
             onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)}
           />
         )}
-      </DraggableTaskRow>
+      </Fragment>
     )
   }
 
   const draggedTask = dragId ? tasks.find((t) => t.id === dragId) : null
+
+  // ─── Shared colgroup (reused in header + body tables) ────────────────────────
+  const Colgroup = () => (
+    <colgroup>
+      <col style={{ width: 44 }} />
+      <col style={{ width: colWidths.task }} />
+      <col style={{ width: colWidths.assigned }} />
+      <col style={{ width: colWidths.progress }} />
+      <col style={{ width: colWidths.status }} />
+      <col style={{ width: colWidths.priority }} />
+      <col style={{ width: 56 }} />
+    </colgroup>
+  )
+
+  const tableStyle: CSSProperties = {
+    tableLayout: 'fixed',
+    width: '100%',
+    borderCollapse: 'separate',
+    borderSpacing: 0,
+  }
+
+  const thBase = 'text-[10px] text-muted-foreground/60 uppercase tracking-wide font-normal py-2 bg-muted/30 border-b border-border'
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -611,8 +662,9 @@ export function TasksView() {
 
       {/* Task list */}
       <div className="flex-1 flex flex-col overflow-hidden">
+
         {/* Filter bar */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b flex-wrap bg-background">
+        <div className="flex items-center gap-2 px-4 py-3 border-b flex-wrap bg-background shrink-0">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -651,37 +703,8 @@ export function TasksView() {
           )}
         </div>
 
-        {/* Column headers */}
-        <div className="flex items-center text-[10px] text-muted-foreground/60 uppercase tracking-wide px-3 py-2 border-b bg-muted/20 select-none">
-          <div className="w-11 shrink-0" />
-          {/* Task column — resizable */}
-          <div className="shrink-0 relative flex items-center pl-1" style={{ width: colWidths.task }}>
-            Task
-            <div
-              className="absolute top-0 h-full z-20 flex items-center justify-center group"
-              style={{ right: -8, width: 16, cursor: 'col-resize' }}
-              onMouseDown={(e) => { e.preventDefault(); startColResize('task', e.clientX, colWidths.task) }}
-            >
-              <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors" />
-            </div>
-          </div>
-          {([ ['assigned','Assigned','md'], ['progress','Progress','sm'], ['status','Status','sm'], ['priority','Priority','sm'] ] as [ColKey,string,string][]).map(([col, label, bp]) => (
-            <div key={col} className={`shrink-0 relative hidden ${bp}:flex items-center justify-center`} style={{ width: colWidths[col] }}>
-              {label}
-              <div
-                className="absolute top-0 h-full z-20 flex items-center justify-center group"
-                style={{ right: -8, width: 16, cursor: 'col-resize' }}
-                onMouseDown={(e) => { e.preventDefault(); startColResize(col as ColKey, e.clientX, colWidths[col as ColKey]) }}
-              >
-                <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors" />
-              </div>
-            </div>
-          ))}
-          <div className="w-14 shrink-0" />
-        </div>
-
-        {/* Task tree with DnD */}
-        <div className="flex-1 overflow-auto p-3">
+        {/* Scrollable table (sticky header via <thead>) */}
+        <div className="flex-1 overflow-auto">
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
@@ -700,16 +723,73 @@ export function TasksView() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-0.5">
-                {rootTasks.map((task) => renderTask(task, 0))}
-                {addingTo === 'root' && (
-                  <InlineAdd
-                    parentId={null} depth={0}
-                    value={newTitle} inputRef={addInputRef}
-                    onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)}
-                  />
-                )}
-              </div>
+              <table style={tableStyle}>
+                <Colgroup />
+                <thead>
+                  <tr>
+                    <th className={`${thBase} pl-1 text-left`} style={{ position: 'sticky', top: 0, zIndex: 10, width: 44 }} />
+                    <th
+                      className={`${thBase} pl-2 text-left`}
+                      style={{ position: 'sticky', top: 0, zIndex: 10 }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        Task
+                        <ResizeHandle col="task" />
+                      </div>
+                    </th>
+                    <th
+                      className={`${thBase} pl-2 text-left`}
+                      style={{ position: 'sticky', top: 0, zIndex: 10 }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        Assigned
+                        <ResizeHandle col="assigned" />
+                      </div>
+                    </th>
+                    <th
+                      className={`${thBase} pl-2 text-left`}
+                      style={{ position: 'sticky', top: 0, zIndex: 10 }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        Progress
+                        <ResizeHandle col="progress" />
+                      </div>
+                    </th>
+                    <th
+                      className={`${thBase} text-center`}
+                      style={{ position: 'sticky', top: 0, zIndex: 10 }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        Status
+                        <ResizeHandle col="status" />
+                      </div>
+                    </th>
+                    <th
+                      className={`${thBase} text-center`}
+                      style={{ position: 'sticky', top: 0, zIndex: 10 }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        Priority
+                        <ResizeHandle col="priority" />
+                      </div>
+                    </th>
+                    <th
+                      className={`${thBase} text-right pr-2`}
+                      style={{ position: 'sticky', top: 0, zIndex: 10, width: 56 }}
+                    />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rootTasks.map((task) => renderTask(task, 0))}
+                  {addingTo === 'root' && (
+                    <InlineAddRow
+                      parentId={null} depth={0}
+                      value={newTitle} inputRef={addInputRef}
+                      onChange={setNewTitle} onConfirm={confirmAdd} onCancel={() => setAddingTo(null)}
+                    />
+                  )}
+                </tbody>
+              </table>
             )}
 
             <DragOverlay dropAnimation={null}>
