@@ -109,7 +109,7 @@ function InlineAdd({
 
 function DraggableTaskRow({
   task, depth, isSelected, isExpanded, hasChildren, isContainer, canEdit, canAddSubtask,
-  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk, assigneeNames, warningText,
+  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk, assigneeNames, warningText, colWidths,
   onSelect, onToggleExpand, onStartAdd, onDelete,
   children,
 }: {
@@ -128,6 +128,7 @@ function DraggableTaskRow({
   isAtRisk: boolean
   assigneeNames: string
   warningText: string
+  colWidths: { assigned: number; progress: number; status: number; priority: number }
   onSelect: () => void
   onToggleExpand: () => void
   onStartAdd: () => void
@@ -200,30 +201,30 @@ function DraggableTaskRow({
           )}
         </div>
 
-        {/* Assignees — fixed width */}
-        <div className="w-28 shrink-0 hidden md:block">
+        {/* Assignees */}
+        <div className="shrink-0 hidden md:block overflow-hidden" style={{ width: colWidths.assigned }}>
           <span className="text-xs text-muted-foreground truncate block" title={assigneeNames}>
             {assigneeNames || <span className="opacity-30">—</span>}
           </span>
         </div>
 
-        {/* Progress — fixed width */}
-        <div className="w-24 shrink-0 hidden sm:flex items-center gap-1.5">
+        {/* Progress */}
+        <div className="shrink-0 hidden sm:flex items-center gap-1.5 overflow-hidden" style={{ width: colWidths.progress }}>
           <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
           </div>
           <span className="text-[10px] text-muted-foreground w-6 text-right shrink-0">{displayProgress}%</span>
         </div>
 
-        {/* Status badge — fixed width */}
-        <div className="w-20 shrink-0 hidden sm:flex justify-center">
+        {/* Status badge */}
+        <div className="shrink-0 hidden sm:flex justify-center overflow-hidden" style={{ width: colWidths.status }}>
           <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(displayStatus)}`}>
             {statusLabel(displayStatus)}
           </span>
         </div>
 
-        {/* Priority badge — fixed width */}
-        <div className="w-16 shrink-0 hidden sm:flex justify-center">
+        {/* Priority badge */}
+        <div className="shrink-0 hidden sm:flex justify-center overflow-hidden" style={{ width: colWidths.priority }}>
           <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityCls(task.priority)}`}>
             {priorityLabel(task.priority)}
           </span>
@@ -280,6 +281,31 @@ export function TasksView() {
   const [filterMember,   setFilterMember]   = useState<string>(
     () => !isPM && currentUser?.memberId ? currentUser.memberId : 'all'
   )
+
+  // Column widths (resizable, persisted to localStorage)
+  const DEFAULT_COL_WIDTHS = { assigned: 112, progress: 96, status: 80, priority: 64 }
+  type ColKey = keyof typeof DEFAULT_COL_WIDTHS
+  const [colWidths, setColWidths] = useState<typeof DEFAULT_COL_WIDTHS>(() => {
+    try {
+      const saved = localStorage.getItem('pmTaskColWidths')
+      return saved ? { ...DEFAULT_COL_WIDTHS, ...JSON.parse(saved) } : DEFAULT_COL_WIDTHS
+    } catch { return DEFAULT_COL_WIDTHS }
+  })
+  const startColResize = (col: ColKey, startX: number, startW: number) => {
+    const onMove = (e: MouseEvent) => {
+      setColWidths((prev) => {
+        const next = { ...prev, [col]: Math.max(48, startW + e.clientX - startX) }
+        localStorage.setItem('pmTaskColWidths', JSON.stringify(next))
+        return next
+      })
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   // Modals
   const [confirmDelete,    setConfirmDelete]    = useState<{ task: Task; descCount: number } | null>(null)
@@ -493,6 +519,7 @@ export function TasksView() {
         isAtRisk={isAtRisk}
         assigneeNames={assigneeNames}
         warningText={warningText}
+        colWidths={colWidths}
         onSelect={() => setSelectedId(isSelected ? null : task.id)}
         onToggleExpand={() => toggleExpand(task.id)}
         onStartAdd={() => handleStartAddSubtask(task)}
@@ -628,10 +655,15 @@ export function TasksView() {
         <div className="flex items-center text-[10px] text-muted-foreground/60 uppercase tracking-wide px-3 py-1 border-b bg-muted/20">
           <div className="w-11 shrink-0" />
           <div className="flex-1 min-w-0 pl-1">Task</div>
-          <div className="w-28 shrink-0 hidden md:block">Assigned</div>
-          <div className="w-24 shrink-0 hidden sm:block">Progress</div>
-          <div className="w-20 shrink-0 hidden sm:block text-center">Status</div>
-          <div className="w-16 shrink-0 hidden sm:block text-center">Priority</div>
+          {([ ['assigned','Assigned','md'], ['progress','Progress','sm'], ['status','Status','sm'], ['priority','Priority','sm'] ] as [ColKey,string,string][]).map(([col, label, bp]) => (
+            <div key={col} className={`shrink-0 relative hidden ${bp}:flex items-center justify-center select-none`} style={{ width: colWidths[col] }}>
+              {label}
+              <div
+                className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 z-10"
+                onMouseDown={(e) => { e.preventDefault(); startColResize(col, e.clientX, colWidths[col]) }}
+              />
+            </div>
+          ))}
           <div className="w-14 shrink-0" />
         </div>
 

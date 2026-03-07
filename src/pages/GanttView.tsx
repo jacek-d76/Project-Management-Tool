@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { ChevronRight, ChevronDown } from 'lucide-react'
+import { ChevronRight, ChevronDown, ChevronsDown, ChevronsUp } from 'lucide-react'
 import { useProjectStore } from '@/store/projectStore'
 import { useSessionStore } from '@/store/sessionStore'
 import type { Task } from '@/types'
@@ -279,6 +279,18 @@ export function GanttView() {
           </button>
         ))}
         <div className="flex-1" />
+        <button
+          onClick={() => setExpanded(new Set())}
+          className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-muted hover:bg-accent font-medium"
+        >
+          <ChevronsUp className="h-3.5 w-3.5" /> Collapse
+        </button>
+        <button
+          onClick={() => setExpanded(new Set(tasks.filter((t) => tasks.some((c) => c.parentId === t.id)).map((t) => t.id)))}
+          className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-muted hover:bg-accent font-medium"
+        >
+          <ChevronsDown className="h-3.5 w-3.5" /> Expand
+        </button>
         <span className="text-xs text-muted-foreground">
           {tasks.filter((t) => t.startDate && t.endDate).length}/{tasks.length} tasks with dates
         </span>

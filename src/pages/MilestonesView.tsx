@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Flag, Plus, Pencil, Trash2, Link2, FolderOpen, Copy, Check,
   AlertTriangle, CheckCircle2, AlertCircle,
+  Bold, Italic, Underline, List, ListOrdered,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,53 @@ const STATUS_CFG = {
   OK:       { icon: CheckCircle2, cls: 'text-green-600',  bg: 'bg-green-50  border-green-200',  label: 'OK'       },
   AT_RISK:  { icon: AlertTriangle, cls: 'text-amber-600', bg: 'bg-amber-50  border-amber-200',  label: 'AT RISK'  },
   BREACHED: { icon: AlertCircle,   cls: 'text-red-600',   bg: 'bg-red-50    border-red-200',    label: 'BREACHED' },
+}
+
+// ─── RichEditor ───────────────────────────────────────────────────────────────
+
+function TBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button" title={title}
+      onMouseDown={(e) => { e.preventDefault(); onClick() }}
+      className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+    >
+      {children}
+    </button>
+  )
+}
+
+function RichEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (ref.current) ref.current.innerHTML = value
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const exec = (cmd: string) => {
+    document.execCommand(cmd, false)
+    if (ref.current) onChange(ref.current.innerHTML)
+  }
+
+  return (
+    <div className="border border-input rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+      <div className="flex items-center gap-0.5 px-1 py-0.5 border-b bg-muted/30 flex-wrap">
+        <TBtn onClick={() => exec('bold')} title="Bold"><Bold className="h-3.5 w-3.5" /></TBtn>
+        <TBtn onClick={() => exec('italic')} title="Italic"><Italic className="h-3.5 w-3.5" /></TBtn>
+        <TBtn onClick={() => exec('underline')} title="Underline"><Underline className="h-3.5 w-3.5" /></TBtn>
+        <div className="w-px h-4 bg-border mx-0.5" />
+        <TBtn onClick={() => exec('insertUnorderedList')} title="Bullet list"><List className="h-3.5 w-3.5" /></TBtn>
+        <TBtn onClick={() => exec('insertOrderedList')} title="Numbered list"><ListOrdered className="h-3.5 w-3.5" /></TBtn>
+      </div>
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        className="min-h-[120px] max-h-[300px] overflow-auto p-3 text-sm focus:outline-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:font-semibold [&_em]:italic [&_u]:underline"
+        onInput={() => { if (ref.current) onChange(ref.current.innerHTML) }}
+      />
+    </div>
+  )
 }
 
 // ─── Empty forms ──────────────────────────────────────────────────────────────
@@ -221,7 +269,10 @@ export function MilestonesView() {
                       <span className="text-xs text-muted-foreground ml-auto">{ms.date}</span>
                     </div>
                     {ms.description && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ms.description}</p>
+                      <div
+                        className="text-xs text-muted-foreground mt-1 line-clamp-3 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_strong]:font-semibold [&_em]:italic [&_u]:underline"
+                        dangerouslySetInnerHTML={{ __html: ms.description }}
+                      />
                     )}
                   </div>
 
@@ -396,11 +447,9 @@ export function MilestonesView() {
             </div>
             <div className="space-y-2">
               <Label>PM notes</Label>
-              <textarea
-                className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 min-h-[80px] resize-y focus:outline-none focus:ring-1 focus:ring-ring"
-                placeholder="Description, acceptance criteria, notes..."
+              <RichEditor
                 value={mForm.description}
-                onChange={(e) => setMForm({ ...mForm, description: e.target.value })}
+                onChange={(v) => setMForm({ ...mForm, description: v })}
               />
             </div>
           </div>
