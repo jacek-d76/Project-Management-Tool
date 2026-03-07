@@ -4,7 +4,7 @@ import {
   PointerSensor, useSensor, useSensors,
   type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core'
-import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo, Calculator, Layers, AlertTriangle, Lock } from 'lucide-react'
+import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo, Calculator, Layers, AlertTriangle, Lock, ChevronsDown, ChevronsUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -109,7 +109,7 @@ function InlineAdd({
 
 function DraggableTaskRow({
   task, depth, isSelected, isExpanded, hasChildren, isContainer, canEdit, canAddSubtask,
-  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk,
+  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk, assigneeNames,
   onSelect, onToggleExpand, onStartAdd, onDelete,
   children,
 }: {
@@ -126,6 +126,7 @@ function DraggableTaskRow({
   displayProgress: number
   displayStatus: TaskStatus
   isAtRisk: boolean
+  assigneeNames: string
   onSelect: () => void
   onToggleExpand: () => void
   onStartAdd: () => void
@@ -149,7 +150,7 @@ function DraggableTaskRow({
       <div
         ref={setDropRef}
         className={[
-          'group flex items-center gap-1.5 rounded-md py-1.5 cursor-pointer transition-colors',
+          'group flex items-center gap-1 rounded-md py-1 cursor-pointer transition-colors',
           isDragging ? 'opacity-30' : '',
           isSelected ? 'bg-accent border border-primary/30' : 'hover:bg-accent/50',
           showInside ? 'ring-2 ring-primary ring-inset rounded-md' : '',
@@ -185,33 +186,43 @@ function DraggableTaskRow({
           }
         </button>
 
-        {/* Progress mini-bar */}
-        <div className="h-1.5 w-8 rounded-full bg-muted shrink-0 overflow-hidden">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
+        {/* Title section — flex-1 */}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-1">
+          {isContainer && <Layers className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
+          <span className={`text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
+            {task.title}
+          </span>
+          {isAtRisk && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
         </div>
 
-        {/* Container icon */}
-        {isContainer && (
-          <Layers className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-        )}
+        {/* Assignees — fixed width */}
+        <div className="w-28 shrink-0 hidden md:block">
+          <span className="text-xs text-muted-foreground truncate block" title={assigneeNames}>
+            {assigneeNames || <span className="opacity-30">—</span>}
+          </span>
+        </div>
 
-        {/* Title */}
-        <span className={`flex-1 text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
-          {task.title}
-        </span>
+        {/* Progress — fixed width */}
+        <div className="w-24 shrink-0 hidden sm:flex items-center gap-1.5">
+          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
+          </div>
+          <span className="text-[10px] text-muted-foreground w-6 text-right shrink-0">{displayProgress}%</span>
+        </div>
 
-        {/* Risk indicator */}
-        {isAtRisk && (
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-        )}
+        {/* Status badge — fixed width */}
+        <div className="w-20 shrink-0 hidden sm:flex justify-center">
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(displayStatus)}`}>
+            {statusLabel(displayStatus)}
+          </span>
+        </div>
 
-        {/* Badges */}
-        <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(displayStatus)}`}>
-          {statusLabel(displayStatus)}
-        </span>
-        <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full ${priorityCls(task.priority)}`}>
-          {priorityLabel(task.priority)}
-        </span>
+        {/* Priority badge — fixed width */}
+        <div className="w-16 shrink-0 hidden sm:flex justify-center">
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityCls(task.priority)}`}>
+            {priorityLabel(task.priority)}
+          </span>
+        </div>
 
         {/* Hover actions */}
         <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 shrink-0 pr-1">
@@ -433,6 +444,12 @@ export function TasksView() {
 
   const handleDragCancel = () => { setDragId(null); setDropInfo(null) }
 
+  const expandAll  = () => {
+    const containerIds = tasks.filter((t) => tasks.some((c) => c.parentId === t.id)).map((t) => t.id)
+    setExpanded(new Set(containerIds))
+  }
+  const collapseAll = () => setExpanded(new Set())
+
   // ─── Recursive task renderer ─────────────────────────────────────────────
 
   const renderTask = (task: Task, depth: number): React.ReactNode => {
@@ -445,6 +462,9 @@ export function TasksView() {
     const displayProgress = isContainer ? computeContainerProgress(task.id, tasks) : task.progress
     const displayStatus   = isContainer ? computeContainerStatus(task.id, tasks)   : task.status
     const isAtRisk        = isContainer && hasEndDateOverflow(task.id, tasks)
+    const assigneeNames   = !isContainer
+      ? task.assignments.map((a) => members.find((m) => m.id === a.personId)?.username ?? '').filter(Boolean).join(', ')
+      : ''
 
     if (!rootVisible(task) && depth === 0) return null
     if (depth > 0 && !passesFilter(task) && !hasVisibleDescendant(task.id)) return null
@@ -465,6 +485,7 @@ export function TasksView() {
         displayProgress={displayProgress}
         displayStatus={displayStatus}
         isAtRisk={isAtRisk}
+        assigneeNames={assigneeNames}
         onSelect={() => setSelectedId(isSelected ? null : task.id)}
         onToggleExpand={() => toggleExpand(task.id)}
         onStartAdd={() => handleStartAddSubtask(task)}
@@ -582,12 +603,29 @@ export function TasksView() {
             </Select>
           )}
           <div className="flex-1" />
+          <Button variant="ghost" size="sm" className="h-8 px-2" title="Collapse all" onClick={collapseAll}>
+            <ChevronsUp className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 px-2" title="Expand all" onClick={expandAll}>
+            <ChevronsDown className="h-4 w-4" />
+          </Button>
           {canEdit && (
             <Button size="sm" className="h-8" onClick={() => startAdd('root')}>
               <Plus className="h-4 w-4 mr-1" />
               Add task
             </Button>
           )}
+        </div>
+
+        {/* Column headers */}
+        <div className="flex items-center text-[10px] text-muted-foreground/60 uppercase tracking-wide px-3 py-1 border-b bg-muted/20">
+          <div className="w-11 shrink-0" />
+          <div className="flex-1 min-w-0 pl-1">Task</div>
+          <div className="w-28 shrink-0 hidden md:block">Assigned</div>
+          <div className="w-24 shrink-0 hidden sm:block">Progress</div>
+          <div className="w-20 shrink-0 hidden sm:block text-center">Status</div>
+          <div className="w-16 shrink-0 hidden sm:block text-center">Priority</div>
+          <div className="w-14 shrink-0" />
         </div>
 
         {/* Task tree with DnD */}
