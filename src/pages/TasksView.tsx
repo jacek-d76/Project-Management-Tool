@@ -109,7 +109,7 @@ function InlineAdd({
 
 function DraggableTaskRow({
   task, depth, isSelected, isExpanded, hasChildren, isContainer, canEdit, canAddSubtask,
-  dropInfo, isDragActive, displayProgress, displayStatus,
+  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk,
   onSelect, onToggleExpand, onStartAdd, onDelete,
   children,
 }: {
@@ -202,7 +202,7 @@ function DraggableTaskRow({
 
         {/* Risk indicator */}
         {isAtRisk && (
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" title="Subtask deadline exceeds this task's deadline" />
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
         )}
 
         {/* Badges */}
