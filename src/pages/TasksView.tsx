@@ -586,9 +586,12 @@ export function TasksView() {
     </colgroup>
   )
 
+  const totalTableWidth = 44 + colWidths.task + colWidths.assigned + colWidths.progress + colWidths.status + colWidths.priority + 56
+
   const tableStyle: CSSProperties = {
     tableLayout: 'fixed',
-    width: '100%',
+    width: totalTableWidth,
+    minWidth: '100%',
     borderCollapse: 'separate',
     borderSpacing: 0,
   }
