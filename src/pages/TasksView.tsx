@@ -109,7 +109,7 @@ function InlineAdd({
 
 function DraggableTaskRow({
   task, depth, isSelected, isExpanded, hasChildren, isContainer, canEdit, canAddSubtask,
-  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk, assigneeNames,
+  dropInfo, isDragActive, displayProgress, displayStatus, isAtRisk, assigneeNames, warningText,
   onSelect, onToggleExpand, onStartAdd, onDelete,
   children,
 }: {
@@ -127,6 +127,7 @@ function DraggableTaskRow({
   displayStatus: TaskStatus
   isAtRisk: boolean
   assigneeNames: string
+  warningText: string
   onSelect: () => void
   onToggleExpand: () => void
   onStartAdd: () => void
@@ -192,6 +193,7 @@ function DraggableTaskRow({
           <span className={`text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
             {task.title}
           </span>
+          {isAtRisk && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
         </div>
 
         {/* Assignees — fixed width */}
@@ -210,9 +212,12 @@ function DraggableTaskRow({
         </div>
 
         {/* Warnings — fixed width */}
-        <div className="w-8 shrink-0 flex justify-center">
-          {isAtRisk && (
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+        <div className="w-44 shrink-0 hidden lg:flex items-center gap-1 min-w-0">
+          {warningText && (
+            <>
+              <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+              <span className="text-[11px] text-amber-700 dark:text-amber-400 truncate">{warningText}</span>
+            </>
           )}
         </div>
 
@@ -468,6 +473,7 @@ export function TasksView() {
     const displayProgress = isContainer ? computeContainerProgress(task.id, tasks) : task.progress
     const displayStatus   = isContainer ? computeContainerStatus(task.id, tasks)   : task.status
     const isAtRisk        = isContainer && hasEndDateOverflow(task.id, tasks)
+    const warningText     = isAtRisk ? getOverflowWarningText(task.id, tasks) : ''
     const assigneeNames   = !isContainer
       ? task.assignments.map((a) => members.find((m) => m.id === a.personId)?.username ?? '').filter(Boolean).join(', ')
       : ''
@@ -492,6 +498,7 @@ export function TasksView() {
         displayStatus={displayStatus}
         isAtRisk={isAtRisk}
         assigneeNames={assigneeNames}
+        warningText={warningText}
         onSelect={() => setSelectedId(isSelected ? null : task.id)}
         onToggleExpand={() => toggleExpand(task.id)}
         onStartAdd={() => handleStartAddSubtask(task)}
@@ -610,10 +617,10 @@ export function TasksView() {
           )}
           <div className="flex-1" />
           <Button variant="outline" size="sm" className="h-8 px-2 gap-1 text-xs" onClick={collapseAll}>
-            <ChevronsUp className="h-3.5 w-3.5" />Zwiń
+            <ChevronsUp className="h-3.5 w-3.5" />Collapse
           </Button>
           <Button variant="outline" size="sm" className="h-8 px-2 gap-1 text-xs" onClick={expandAll}>
-            <ChevronsDown className="h-3.5 w-3.5" />Rozwiń
+            <ChevronsDown className="h-3.5 w-3.5" />Expand
           </Button>
           {canEdit && (
             <Button size="sm" className="h-8" onClick={() => startAdd('root')}>
@@ -629,7 +636,7 @@ export function TasksView() {
           <div className="flex-1 min-w-0 pl-1">Task</div>
           <div className="w-28 shrink-0 hidden md:block">Assigned</div>
           <div className="w-24 shrink-0 hidden sm:block">Progress</div>
-          <div className="w-8 shrink-0 text-center">!</div>
+          <div className="w-44 shrink-0 hidden lg:block">Warnings</div>
           <div className="w-20 shrink-0 hidden sm:block text-center">Status</div>
           <div className="w-16 shrink-0 hidden sm:block text-center">Priority</div>
           <div className="w-14 shrink-0" />
@@ -716,6 +723,20 @@ function workingDaysBetween(startStr: string, endStr: string): number {
     d.setDate(d.getDate() + 1)
   }
   return count
+}
+
+function getOverflowWarningText(taskId: string, allTasks: Task[]): string {
+  const parent = allTasks.find((t) => t.id === taskId)
+  if (!parent?.endDate) return ''
+  const children = allTasks.filter((t) => t.parentId === taskId)
+  for (const child of children) {
+    if (child.endDate && child.endDate > parent.endDate) {
+      return `"${child.title}" – deadline ${child.endDate} > ${parent.endDate}`
+    }
+    const deeper = getOverflowWarningText(child.id, allTasks)
+    if (deeper) return deeper
+  }
+  return ''
 }
 
 // ─── Computed container values ────────────────────────────────────────────────
