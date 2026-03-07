@@ -310,6 +310,10 @@ export function TasksView() {
     if (!newTitle.trim() || !project) { setAddingTo(null); return }
     const siblings = parentId ? getChildren(parentId) : rootTasks
     const position = siblings.length > 0 ? Math.max(...siblings.map((t) => t.position)) + 1 : 0
+    // Auto-assign member to their own task so it stays visible in the filter
+    const autoAssignments = (!isPM && currentUser?.memberId)
+      ? [{ personId: currentUser.memberId, estimatedHours: 0, actualHours: null }]
+      : []
     addTask({
       projectId: project.id, parentId,
       title: newTitle.trim(), description: '',
@@ -317,7 +321,7 @@ export function TasksView() {
       startDate: null, endDate: null,
       progress: 0,
       pricingMode: 'hourly', fixedPrice: null,
-      assignments: [], dependencies: [], position,
+      assignments: autoAssignments, dependencies: [], position,
     })
     setNewTitle('')
     setAddingTo(null)
