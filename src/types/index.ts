@@ -91,6 +91,7 @@ export interface Task {
   assignments: TaskAssignment[]
   dependencies: TaskDependency[]
   position: number           // kolejność wyświetlania
+  startDateLocked?: boolean  // PM może zablokować datę startową dla członków zespołu
 }
 
 // ─── Milestone'y ─────────────────────────────────────────────────────────────

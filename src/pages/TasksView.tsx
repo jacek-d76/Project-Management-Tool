@@ -4,7 +4,7 @@ import {
   PointerSensor, useSensor, useSensors,
   type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core'
-import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo, Calculator, Layers } from 'lucide-react'
+import { GripVertical, Plus, ChevronRight, ChevronDown, Trash2, X, ListTodo, Calculator, Layers, AlertTriangle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -125,6 +125,7 @@ function DraggableTaskRow({
   isDragActive: boolean
   displayProgress: number
   displayStatus: TaskStatus
+  isAtRisk: boolean
   onSelect: () => void
   onToggleExpand: () => void
   onStartAdd: () => void
@@ -198,6 +199,11 @@ function DraggableTaskRow({
         <span className={`flex-1 text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
           {task.title}
         </span>
+
+        {/* Risk indicator */}
+        {isAtRisk && (
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" title="Subtask deadline exceeds this task's deadline" />
+        )}
 
         {/* Badges */}
         <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(displayStatus)}`}>
@@ -320,13 +326,16 @@ export function TasksView() {
     const autoAssignments = (!isPM && currentUser?.memberId)
       ? [{ personId: currentUser.memberId, estimatedHours: 0, actualHours: null }]
       : []
+    const parentTask = parentId ? tasks.find((t) => t.id === parentId) : null
     const newId = generateId()
     addTask({
       id: newId,
       projectId: project.id, parentId,
       title: newTitle.trim(), description: '',
       status: 'TODO', priority: 'MEDIUM',
-      startDate: null, endDate: null,
+      startDate: parentTask?.startDate ?? null,
+      endDate: parentTask?.endDate ?? null,
+      startDateLocked: false,
       progress: 0,
       pricingMode: 'hourly', fixedPrice: null,
       assignments: autoAssignments, dependencies: [], position,
@@ -435,6 +444,7 @@ export function TasksView() {
     const canAddSubtask = depth < 2  // max 3 levels (depth 0, 1, 2)
     const displayProgress = isContainer ? computeContainerProgress(task.id, tasks) : task.progress
     const displayStatus   = isContainer ? computeContainerStatus(task.id, tasks)   : task.status
+    const isAtRisk        = isContainer && hasEndDateOverflow(task.id, tasks)
 
     if (!rootVisible(task) && depth === 0) return null
     if (depth > 0 && !passesFilter(task) && !hasVisibleDescendant(task.id)) return null
@@ -454,6 +464,7 @@ export function TasksView() {
         isDragActive={!!dragId}
         displayProgress={displayProgress}
         displayStatus={displayStatus}
+        isAtRisk={isAtRisk}
         onSelect={() => setSelectedId(isSelected ? null : task.id)}
         onToggleExpand={() => toggleExpand(task.id)}
         onStartAdd={() => handleStartAddSubtask(task)}
@@ -675,6 +686,17 @@ function computeContainerProgress(taskId: string, allTasks: Task[]): number {
   return Math.round(childProgresses.reduce((s, p) => s + p, 0) / childProgresses.length)
 }
 
+function hasEndDateOverflow(taskId: string, allTasks: Task[]): boolean {
+  const parent = allTasks.find((t) => t.id === taskId)
+  if (!parent?.endDate) return false
+  const children = allTasks.filter((t) => t.parentId === taskId)
+  for (const child of children) {
+    if (child.endDate && child.endDate > parent.endDate) return true
+    if (hasEndDateOverflow(child.id, allTasks)) return true
+  }
+  return false
+}
+
 function computeContainerStatus(taskId: string, allTasks: Task[]): TaskStatus {
   const children = allTasks.filter((t) => t.parentId === taskId)
   if (children.length === 0) return 'TODO'
@@ -878,27 +900,61 @@ function TaskPanel({
         </div>
 
         {/* Dates */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Start date</Label>
-            <Input type="date" className="h-8 text-xs" value={task.startDate ?? ''} disabled={!canEdit}
-              onChange={(e) => setTaskDates(task.id, e.target.value || null, task.endDate)} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Deadline</Label>
-            <Input type="date" className="h-8 text-xs" value={task.endDate ?? ''} disabled={!canEdit}
-              onChange={(e) => setTaskDates(task.id, task.startDate, e.target.value || null)} />
-          </div>
-        </div>
-
-        {/* Working days info */}
-        {task.startDate && task.endDate && (() => {
-          const wdays = workingDaysBetween(task.startDate, task.endDate)
-          const calDays = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000) + 1
+        {(() => {
+          const parentTask = task.parentId ? tasks.find((t) => t.id === task.parentId) : null
+          const isStartLocked = !isPM && task.startDateLocked === true
+          const dateOverflow = !!(parentTask?.endDate && task.endDate && task.endDate > parentTask.endDate)
           return (
-            <p className="text-[10px] text-muted-foreground -mt-1">
-              {calDays} calendar days · <span className="font-medium text-foreground">{wdays} working days</span>
-            </p>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Start date</Label>
+                    {isPM && canEdit && (
+                      <button
+                        title={task.startDateLocked ? 'Locked for team — click to unlock' : 'Click to lock start date for team'}
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => updateTask(task.id, { startDateLocked: !task.startDateLocked })}
+                      >
+                        <Lock className={`h-3 w-3 ${task.startDateLocked ? 'text-amber-500' : 'opacity-30'}`} />
+                      </button>
+                    )}
+                  </div>
+                  <Input type="date" className="h-8 text-xs" value={task.startDate ?? ''}
+                    disabled={!canEdit || isStartLocked}
+                    onChange={(e) => setTaskDates(task.id, e.target.value || null, task.endDate)} />
+                  {isStartLocked && (
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <Lock className="h-2.5 w-2.5" /> Locked by PM
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Deadline</Label>
+                  <Input type="date" className="h-8 text-xs" value={task.endDate ?? ''}
+                    disabled={!canEdit}
+                    onChange={(e) => setTaskDates(task.id, task.startDate, e.target.value || null)} />
+                </div>
+              </div>
+              {task.startDate && task.endDate && (() => {
+                const wdays = workingDaysBetween(task.startDate, task.endDate)
+                const calDays = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000) + 1
+                return (
+                  <p className="text-[10px] text-muted-foreground">
+                    {calDays} calendar days · <span className="font-medium text-foreground">{wdays} working days</span>
+                  </p>
+                )
+              })()}
+              {dateOverflow && (
+                <div className="flex items-start gap-1.5 px-2.5 py-2 rounded-md bg-amber-50 border border-amber-200 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    Deadline exceeds parent <strong>"{parentTask!.title}"</strong> ({parentTask!.endDate}).
+                    {!isPM && ' PM sees a risk indicator on the parent task.'}
+                  </span>
+                </div>
+              )}
+            </div>
           )
         })()}
 
