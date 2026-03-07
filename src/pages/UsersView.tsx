@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, ShieldCheck, UserCog, Save, ChevronDown, ChevronRight, ListTodo } from 'lucide-react'
+import { Plus, Trash2, Pencil, ShieldCheck, UserCog, ChevronDown, ChevronRight, ListTodo } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,12 +46,11 @@ const emptyForm = {
 export function UsersView() {
   const { members, addMember, updateMember, deleteMember, project, contractors, tasks } = useProjectStore()
 
-  const [dirtyPerms,      setDirtyPerms]      = useState<Record<string, UserPermissions>>({})
   const [expandedTasksFor, setExpandedTasksFor] = useState<Set<string>>(new Set())
-  const [open,            setOpen]            = useState(false)
-  const [editId,          setEditId]          = useState<string | null>(null)
-  const [form,            setForm]            = useState({ ...emptyForm, permissions: { ...DEFAULT_PERMISSIONS } })
-  const [usernameError,   setUsernameError]   = useState('')
+  const [open,           setOpen]           = useState(false)
+  const [editId,         setEditId]         = useState<string | null>(null)
+  const [form,           setForm]           = useState({ ...emptyForm, permissions: { ...DEFAULT_PERMISSIONS } })
+  const [usernameError,  setUsernameError]  = useState('')
 
   const currencyLabel = project?.currency ?? 'EUR'
 
@@ -68,23 +67,6 @@ export function UsersView() {
       next.has(memberId) ? next.delete(memberId) : next.add(memberId)
       return next
     })
-
-  const getPerms = (m: TeamMember): UserPermissions => dirtyPerms[m.id] ?? m.permissions
-
-  const togglePerm = (memberId: string, key: keyof UserPermissions) => {
-    const current = dirtyPerms[memberId] ?? members.find((m) => m.id === memberId)!.permissions
-    setDirtyPerms((d) => ({ ...d, [memberId]: { ...current, [key]: !current[key] } }))
-  }
-
-  const savePerms = (memberId: string) => {
-    if (dirtyPerms[memberId]) {
-      updateMember(memberId, { permissions: dirtyPerms[memberId] })
-      setDirtyPerms((d) => { const next = { ...d }; delete next[memberId]; return next })
-    }
-  }
-
-  const discardPerms = (memberId: string) =>
-    setDirtyPerms((d) => { const next = { ...d }; delete next[memberId]; return next })
 
   const openAdd = () => {
     setEditId(null)
@@ -166,18 +148,18 @@ export function UsersView() {
       ) : (
         <div className="space-y-3">
           {members.map((m) => {
-            const perms      = getPerms(m)
-            const isDirty    = !!dirtyPerms[m.id]
-            const contractor = m.contractorId ? contractors.find((c) => c.id === m.contractorId) : null
-            const mTasks     = memberTasks(m.id)
-            const totalEst   = mTasks.reduce((s, t) => s + (t.assignments.find((a) => a.personId === m.id)?.estimatedHours ?? 0), 0)
-            const totalAct   = mTasks.reduce((s, t) => s + (t.assignments.find((a) => a.personId === m.id)?.actualHours ?? 0), 0)
+            const contractor  = m.contractorId ? contractors.find((c) => c.id === m.contractorId) : null
+            const mTasks      = memberTasks(m.id)
+            const totalEst    = mTasks.reduce((s, t) => s + (t.assignments.find((a) => a.personId === m.id)?.estimatedHours ?? 0), 0)
+            const totalAct    = mTasks.reduce((s, t) => s + (t.assignments.find((a) => a.personId === m.id)?.actualHours ?? 0), 0)
+            const totalAvail  = totalEst - totalAct
             const isTasksOpen = expandedTasksFor.has(m.id)
+            const perms       = m.permissions
 
             return (
-              <Card key={m.id} className={!m.isActive ? 'opacity-50' : isDirty ? 'border-primary/50' : ''}>
+              <Card key={m.id} className={!m.isActive ? 'opacity-50' : ''}>
                 <CardContent className="py-3 space-y-3">
-                  {/* Row 1: user data */}
+                  {/* Row 1: user data + actions */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -224,95 +206,78 @@ export function UsersView() {
                     </div>
                   </div>
 
+                  {/* Row 2: permissions (read-only summary) */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {PERMISSIONS_CONFIG.map(({ key, label }) => (
+                      <span
+                        key={key}
+                        className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                          perms[key]
+                            ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                            : 'bg-muted/40 border-border text-muted-foreground line-through'
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+
                   {/* Task list (expanded) */}
                   {isTasksOpen && (
                     <div className="border-t pt-3">
                       {mTasks.length === 0 ? (
                         <p className="text-xs text-muted-foreground italic">No tasks assigned.</p>
                       ) : (
-                        <>
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-muted-foreground border-b">
-                                <th className="text-left py-1 pr-3 font-medium">Task</th>
-                                <th className="text-left py-1 pr-3 font-medium w-24">Status</th>
-                                <th className="text-right py-1 pr-3 font-medium w-16">Planned</th>
-                                <th className="text-right py-1 font-medium w-16">Actual</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {mTasks.map((t) => {
-                                const a = t.assignments.find((x) => x.personId === m.id)!
-                                return (
-                                  <tr key={t.id} className="border-b border-border/40 hover:bg-muted/30">
-                                    <td className="py-1.5 pr-3 truncate max-w-0 w-full">
-                                      <span className={t.status === 'DONE' ? 'line-through text-muted-foreground' : ''}>
-                                        {t.title}
-                                      </span>
-                                    </td>
-                                    <td className="py-1.5 pr-3">
-                                      <span className={`px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLS[t.status] ?? ''}`}>
-                                        {STATUS_LABEL[t.status] ?? t.status}
-                                      </span>
-                                    </td>
-                                    <td className="py-1.5 pr-3 text-right tabular-nums">
-                                      {a.estimatedHours > 0 ? `${a.estimatedHours}h` : '—'}
-                                    </td>
-                                    <td className="py-1.5 text-right tabular-nums">
-                                      {a.actualHours != null ? `${a.actualHours}h` : '—'}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                            <tfoot>
-                              <tr className="text-muted-foreground font-medium">
-                                <td colSpan={2} className="pt-2 text-xs">Total</td>
-                                <td className="pt-2 pr-3 text-right tabular-nums text-foreground">
-                                  {totalEst > 0 ? `${totalEst}h` : '—'}
-                                </td>
-                                <td className="pt-2 text-right tabular-nums text-foreground">
-                                  {totalAct > 0 ? `${totalAct}h` : '—'}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-muted-foreground border-b">
+                              <th className="text-left py-1 pr-3 font-medium">Task</th>
+                              <th className="text-left py-1 pr-3 font-medium w-28">Status</th>
+                              <th className="text-right py-1 pr-3 font-medium w-16">Planned</th>
+                              <th className="text-right py-1 font-medium w-16">Available</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {mTasks.map((t) => {
+                              const a     = t.assignments.find((x) => x.personId === m.id)!
+                              const avail = a.estimatedHours - (a.actualHours ?? 0)
+                              return (
+                                <tr key={t.id} className="border-b border-border/40 hover:bg-muted/30">
+                                  <td className="py-1.5 pr-3 truncate max-w-0 w-full">
+                                    <span className={t.status === 'DONE' ? 'line-through text-muted-foreground' : ''}>
+                                      {t.title}
+                                    </span>
+                                  </td>
+                                  <td className="py-1.5 pr-3 whitespace-nowrap">
+                                    <span className={`px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLS[t.status] ?? ''}`}>
+                                      {STATUS_LABEL[t.status] ?? t.status}
+                                    </span>
+                                  </td>
+                                  <td className="py-1.5 pr-3 text-right tabular-nums">
+                                    {a.estimatedHours > 0 ? `${a.estimatedHours}h` : '—'}
+                                  </td>
+                                  <td className={`py-1.5 text-right tabular-nums ${avail < 0 ? 'text-destructive' : ''}`}>
+                                    {a.estimatedHours > 0 ? `${avail}h` : '—'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="font-medium">
+                              <td colSpan={2} className="pt-2 text-xs text-muted-foreground">Total</td>
+                              <td className="pt-2 pr-3 text-right tabular-nums text-foreground">
+                                {totalEst > 0 ? `${totalEst}h` : '—'}
+                              </td>
+                              <td className={`pt-2 text-right tabular-nums ${totalAvail < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                                {totalEst > 0 ? `${totalAvail}h` : '—'}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       )}
                     </div>
                   )}
-
-                  {/* Row 2: permission checkboxes */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {PERMISSIONS_CONFIG.map(({ key, label, description }) => (
-                      <label
-                        key={key}
-                        title={description}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-xs hover:bg-muted/60 border border-transparent hover:border-border select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={perms[key]}
-                          onChange={() => togglePerm(m.id, key)}
-                          className="h-3.5 w-3.5 shrink-0"
-                        />
-                        <span className={perms[key] ? 'font-medium' : 'text-muted-foreground'}>{label}</span>
-                      </label>
-                    ))}
-
-                    {isDirty && (
-                      <div className="flex gap-1 ml-auto">
-                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
-                          onClick={() => discardPerms(m.id)}>
-                          Cancel
-                        </Button>
-                        <Button size="sm" className="h-7 px-3 text-xs gap-1" onClick={() => savePerms(m.id)}>
-                          <Save className="h-3 w-3" />
-                          Save
-                        </Button>
-                      </div>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
             )
@@ -419,6 +384,34 @@ export function UsersView() {
                 </div>
               )}
             </div>
+
+            {/* Permissions */}
+            <div className="space-y-2">
+              <Label>Permissions</Label>
+              <div className="grid grid-cols-2 gap-1">
+                {PERMISSIONS_CONFIG.map(({ key, label, description }) => (
+                  <label
+                    key={key}
+                    title={description}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm hover:bg-muted/60 border border-transparent hover:border-border select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.permissions[key]}
+                      onChange={() => setForm({
+                        ...form,
+                        permissions: { ...form.permissions, [key]: !form.permissions[key] },
+                      })}
+                      className="h-4 w-4 shrink-0"
+                    />
+                    <span className={form.permissions[key] ? 'font-medium' : 'text-muted-foreground'}>
+                      {label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
