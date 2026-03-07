@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShieldCheck, User, LogIn, LogOut, Trash2, AlertTriangle, CheckCircle2, Clock, Ban, Circle, CalendarDays, TrendingUp, Users } from 'lucide-react'
+import { ShieldCheck, User, LogIn, LogOut, Trash2, AlertTriangle, Ban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useProjectStore } from '@/store/projectStore'
 import { getActivityEvents, getActiveSessions, clearActivityLog } from '@/lib/activityLog'
@@ -103,7 +103,6 @@ export function StatisticsView() {
   const done      = leafTasks.filter((t) => t.status === 'DONE').length
   const inProg    = leafTasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'IN_REVIEW').length
   const blocked   = leafTasks.filter((t) => t.status === 'BLOCKED').length
-  const todo      = leafTasks.filter((t) => t.status === 'TODO').length
   const overallPct = total > 0 ? Math.round(done / total * 100) : 0
 
   const overdue = leafTasks.filter(
