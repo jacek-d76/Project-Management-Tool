@@ -27,7 +27,7 @@ interface ProjectState {
   deleteContractor: (id: string) => void
 
   // Zadania
-  addTask: (task: Omit<Task, 'id'>) => void
+  addTask: (task: Omit<Task, 'id'> & { id?: string }) => void
   updateTask: (id: string, data: Partial<Task>) => void
   deleteTask: (id: string) => void
   moveTask: (taskId: string, newParentId: string | null, newPosition: number) => void
@@ -106,7 +106,7 @@ export const useProjectStore = create<ProjectState>()(
       // ─── Zadania ─────────────────────────────────────────────────────────
       addTask: (taskData) =>
         set((state) => ({
-          tasks: [...state.tasks, { ...taskData, id: generateId() }],
+          tasks: [...state.tasks, { ...taskData, id: taskData.id ?? generateId() }],
         })),
 
       updateTask: (id, data) =>

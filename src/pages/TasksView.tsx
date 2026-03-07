@@ -14,6 +14,7 @@ import {
 import { useProjectStore } from '@/store/projectStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { wouldCreateCycle } from '@/lib/scheduler'
+import { generateId } from '@/lib/utils'
 import type { Task, TaskStatus, TaskPriority, TeamMember, DependencyType } from '@/types'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -316,7 +317,9 @@ export function TasksView() {
     const autoAssignments = (!isPM && currentUser?.memberId)
       ? [{ personId: currentUser.memberId, estimatedHours: 0, actualHours: null }]
       : []
+    const newId = generateId()
     addTask({
+      id: newId,
       projectId: project.id, parentId,
       title: newTitle.trim(), description: '',
       status: 'TODO', priority: 'MEDIUM',
@@ -327,6 +330,10 @@ export function TasksView() {
     })
     setNewTitle('')
     setAddingTo(null)
+    // Auto-open panel for team members so they can set planned hours immediately
+    if (!isPM && currentUser?.memberId) {
+      setSelectedId(newId)
+    }
   }
 
   const handleStartAddSubtask = (task: Task) => {
@@ -601,6 +608,7 @@ export function TasksView() {
           isPM={isPM}
           canEdit={canEdit}
           canProgress={canProgress}
+          currentMemberId={currentUser?.memberId ?? null}
           onClose={() => setSelectedId(null)}
           updateTask={updateTask}
           setTaskDates={setTaskDates}
@@ -656,7 +664,7 @@ function computeContainerStatus(taskId: string, allTasks: Task[]): TaskStatus {
 // ─── TaskPanel ────────────────────────────────────────────────────────────────
 
 function TaskPanel({
-  task, tasks, members, isPM, canEdit, canProgress, onClose, updateTask, setTaskDates, addTaskDependency, currencyLabel,
+  task, tasks, members, isPM, canEdit, canProgress, currentMemberId, onClose, updateTask, setTaskDates, addTaskDependency, currencyLabel,
 }: {
   task: Task
   tasks: Task[]
@@ -664,6 +672,7 @@ function TaskPanel({
   isPM: boolean
   canEdit: boolean
   canProgress: boolean
+  currentMemberId: string | null
   onClose: () => void
   updateTask: (id: string, data: Partial<Task>) => void
   setTaskDates: (id: string, startDate: string | null, endDate: string | null) => void
@@ -979,14 +988,46 @@ function TaskPanel({
               task.assignments.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">No one assigned</p>
               ) : (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-1.5">
                   {task.assignments.map((a) => {
                     const m = members.find((x) => x.id === a.personId)
                     if (!m) return null
+                    const isOwnAssignment = a.personId === currentMemberId
+                    const hours = localHours[a.personId]
                     return (
-                      <span key={a.personId} className="text-xs bg-muted rounded-full px-2.5 py-0.5 font-medium">
-                        {m.name}
-                      </span>
+                      <div key={a.personId} className={`rounded-md border ${isOwnAssignment ? 'border-border bg-muted/20' : 'border-transparent'}`}>
+                        <div className="flex items-center gap-2 text-xs px-2 py-1.5">
+                          <span className="font-medium flex-1">{m.name}</span>
+                          {m.projectRole && <span className="text-muted-foreground text-[10px]">{m.projectRole}</span>}
+                        </div>
+                        {isOwnAssignment && hours && (
+                          <div className="px-2 pb-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-muted-foreground w-14 shrink-0">Planned:</span>
+                              <Input
+                                type="number" min={0} step={0.5}
+                                className="h-6 text-xs w-16 px-1.5"
+                                value={hours.est}
+                                onChange={(e) => setLocalHours((p) => ({ ...p, [a.personId]: { ...p[a.personId], est: e.target.value } }))}
+                                onBlur={() => saveHours(a.personId)}
+                              />
+                              <span className="text-[10px] text-muted-foreground">h</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <span className="text-[10px] text-muted-foreground w-14 shrink-0">Actual:</span>
+                              <Input
+                                type="number" min={0} step={0.5}
+                                className="h-6 text-xs w-16 px-1.5"
+                                value={hours.actual}
+                                placeholder="—"
+                                onChange={(e) => setLocalHours((p) => ({ ...p, [a.personId]: { ...p[a.personId], actual: e.target.value } }))}
+                                onBlur={() => saveHours(a.personId)}
+                              />
+                              <span className="text-[10px] text-muted-foreground">h</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
