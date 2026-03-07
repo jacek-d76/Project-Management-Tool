@@ -341,7 +341,7 @@ export function CostsView() {
                     <th className="text-right px-3 py-2 font-medium">Rate</th>
                     <th className="text-right px-3 py-2 font-medium">Est. h</th>
                     <th className="text-right px-3 py-2 font-medium hidden md:table-cell">Act. h</th>
-                    <th className="text-right px-3 py-2 font-medium">Budget</th>
+                    <th className="text-right px-3 py-2 font-medium">Estimated costs</th>
                     <th className="text-right px-3 py-2 font-medium hidden md:table-cell">Actual cost</th>
                   </tr>
                 </thead>
