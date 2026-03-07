@@ -591,7 +591,6 @@ export function TasksView() {
   const tableStyle: CSSProperties = {
     tableLayout: 'fixed',
     width: totalTableWidth,
-    minWidth: '100%',
     borderCollapse: 'separate',
     borderSpacing: 0,
   }
