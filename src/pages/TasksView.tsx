@@ -109,7 +109,7 @@ function InlineAdd({
 
 function DraggableTaskRow({
   task, depth, isSelected, isExpanded, hasChildren, isContainer, canEdit, canAddSubtask,
-  dropInfo, isDragActive,
+  dropInfo, isDragActive, displayProgress, displayStatus,
   onSelect, onToggleExpand, onStartAdd, onDelete,
   children,
 }: {
@@ -123,6 +123,8 @@ function DraggableTaskRow({
   canAddSubtask: boolean
   dropInfo: DropInfo
   isDragActive: boolean
+  displayProgress: number
+  displayStatus: TaskStatus
   onSelect: () => void
   onToggleExpand: () => void
   onStartAdd: () => void
@@ -184,7 +186,7 @@ function DraggableTaskRow({
 
         {/* Progress mini-bar */}
         <div className="h-1.5 w-8 rounded-full bg-muted shrink-0 overflow-hidden">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progress}%` }} />
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${displayProgress}%` }} />
         </div>
 
         {/* Container icon */}
@@ -193,13 +195,13 @@ function DraggableTaskRow({
         )}
 
         {/* Title */}
-        <span className={`flex-1 text-sm truncate ${task.status === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
+        <span className={`flex-1 text-sm truncate ${displayStatus === 'DONE' ? 'line-through text-muted-foreground' : ''} ${isContainer ? 'font-medium' : ''}`}>
           {task.title}
         </span>
 
         {/* Badges */}
-        <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(task.status)}`}>
-          {statusLabel(task.status)}
+        <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium ${statusCls(displayStatus)}`}>
+          {statusLabel(displayStatus)}
         </span>
         <span className={`shrink-0 hidden sm:inline text-xs px-1.5 py-0.5 rounded-full ${priorityCls(task.priority)}`}>
           {priorityLabel(task.priority)}
@@ -430,6 +432,8 @@ export function TasksView() {
     const hasChildren = children.length > 0
     const isContainer = hasChildren
     const canAddSubtask = depth < 2  // max 3 levels (depth 0, 1, 2)
+    const displayProgress = isContainer ? computeContainerProgress(task.id, tasks) : task.progress
+    const displayStatus   = isContainer ? computeContainerStatus(task.id, tasks)   : task.status
 
     if (!rootVisible(task) && depth === 0) return null
     if (depth > 0 && !passesFilter(task) && !hasVisibleDescendant(task.id)) return null
@@ -447,6 +451,8 @@ export function TasksView() {
         canAddSubtask={canAddSubtask}
         dropInfo={dropInfo}
         isDragActive={!!dragId}
+        displayProgress={displayProgress}
+        displayStatus={displayStatus}
         onSelect={() => setSelectedId(isSelected ? null : task.id)}
         onToggleExpand={() => toggleExpand(task.id)}
         onStartAdd={() => handleStartAddSubtask(task)}
